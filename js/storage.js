@@ -3,30 +3,9 @@ let userName = '';
 let tasks = [];
 let progressData = {};
 
-function getTodayDateString() {
-    const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-}
-
-function getTodayKey() {
-    const days = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
-    return days[new Date().getDay()];
-}
-
-const DAYS = [
-    { key: 'SEN', full: 'Senin', index: 1 },
-    { key: 'SEL', full: 'Selasa', index: 2 },
-    { key: 'RAB', full: 'Rabu', index: 3 },
-    { key: 'KAM', full: 'Kamis', index: 4 },
-    { key: 'JUM', full: 'Jumat', index: 5 },
-    { key: 'SAB', full: 'Sabtu', index: 6 },
-    { key: 'MIN', full: 'Minggu', index: 0 }
-];
-
-// SINKRONISASI KE SUPABASE CLOUD
 async function saveData() {
     const syncBadge = document.getElementById('sync-status');
-    if (!currentUser) return;
+    if (!currentUser || !supabaseClient) return;
 
     if (syncBadge) syncBadge.innerText = "● Syncing...";
 
@@ -42,22 +21,20 @@ async function saveData() {
             }, { onConflict: 'user_id' });
 
         if (error) {
-            console.error('Gagal sync ke Supabase:', error.message);
+            console.error('Gagal sync:', error.message);
             if (syncBadge) syncBadge.innerText = "● Sync Error";
         } else {
             if (syncBadge) syncBadge.innerText = "● Cloud Synced";
         }
     } catch (err) {
-        console.error('Error koneksi Supabase:', err);
         if (syncBadge) syncBadge.innerText = "● Offline";
     }
 }
 
-// MEMUAT DATA DARI SUPABASE CLOUD
 async function loadDataFromSupabase(callback) {
     const syncBadge = document.getElementById('sync-status');
     
-    if (!currentUser) {
+    if (!currentUser || !supabaseClient) {
         tasks = [];
         progressData = {};
         if (syncBadge) syncBadge.innerText = "● Belum Login";
@@ -86,7 +63,6 @@ async function loadDataFromSupabase(callback) {
             await saveData();
         }
     } catch (err) {
-        console.error('Error memuat data:', err);
         if (syncBadge) syncBadge.innerText = "● Offline";
     }
 
@@ -95,7 +71,9 @@ async function loadDataFromSupabase(callback) {
 
 async function handleLogout() {
     if (confirm("Apakah Anda yakin ingin keluar dari akun?")) {
-        await supabaseClient.auth.signOut();
+        if (supabaseClient) {
+            await supabaseClient.auth.signOut();
+        }
         currentUser = null;
         userName = '';
         tasks = [];
@@ -144,7 +122,7 @@ function restoreFromInternalStorage(event) {
 async function resetAllData() {
     if (confirm("PERINGATAN: Semua data akun ini di Supabase dan lokal akan dihapus!")) {
         if (confirm("Yakin ingin melanjutkan?")) {
-            if (currentUser) {
+            if (currentUser && supabaseClient) {
                 await supabaseClient.from('user_data').delete().eq('user_id', currentUser.id);
             }
             localStorage.clear();
