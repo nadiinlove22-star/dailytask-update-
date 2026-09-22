@@ -1,12 +1,56 @@
 let userName = localStorage.getItem('daylido_username') || 'DK';
-let tasks = JSON.parse(localStorage.getItem('daylido_tasks')) || [];
-let progressData = JSON.parse(localStorage.getItem('daylido_progress')) || {};
+let tasks = [];
+let progressData = {};
 
-// Auto-save tiap kali ada perubahan data
-function saveData() {
+function getUserId() {
+    return userName.toLowerCase().trim().replace(/\s+/g, '_');
+}
+
+// AUTO-SAVE KE SUPABASE DATABASE
+async function saveData() {
     localStorage.setItem('daylido_username', userName);
-    localStorage.setItem('daylido_tasks', JSON.stringify(tasks));
-    localStorage.setItem('daylido_progress', JSON.stringify(progressData));
+    const userId = getUserId();
+    
+    try {
+        const { error } = await supabaseClient
+            .from('user_data')
+            .upsert({ 
+                user_id: userId, 
+                user_name: userName, 
+                tasks: tasks, 
+                progress_data: progressData,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
+        if (error) console.error('Gagal simpan ke Supabase:', error.message);
+    } catch (err) {
+        console.error('Error koneksi Supabase:', err);
+    }
+}
+
+// AMBIL DATA DARI SUPABASE DATABASE
+async function loadDataFromSupabase(callback) {
+    const userId = getUserId();
+    
+    try {
+        let { data, error } = await supabaseClient
+            .from('user_data')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        if (data) {
+            tasks = data.tasks || [];
+            progressData = data.progress_data || {};
+            if (data.user_name) userName = data.user_name;
+        } else {
+            await saveData();
+        }
+    } catch (err) {
+        console.log('Pengguna baru / menggunakan data awal');
+    }
+
+    if (callback) callback();
 }
 
 function backupToInternalStorage() {
@@ -29,17 +73,17 @@ function restoreFromInternalStorage(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             const content = JSON.parse(e.target.result);
             if (content.tasks && content.progress) {
                 tasks = content.tasks;
                 progressData = content.progress;
-                if (content.user) { userName = content.user; }
-                saveData();
+                if (content.user) userName = content.user;
+                await saveData();
                 updateUserInfo();
                 renderTodoList();
-                alert("Data & profil berhasil dipulihkan!");
+                alert("Data berhasil dipulihkan & sinkron ke Supabase!");
             } else { alert("Format file JSON tidak valid."); }
         } catch (err) { alert("Gagal membaca file."); }
         event.target.value = '';
@@ -47,9 +91,11 @@ function restoreFromInternalStorage(event) {
     reader.readAsText(file);
 }
 
-function resetAllData() {
-    if (confirm("PERINGATAN: Semua data dan tugas akan dihapus total!")) {
-        if (confirm("Yakin ingin mengembalikan ke pengaturan awal?")) {
+async function resetAllData() {
+    if (confirm("PERINGATAN: Semua data di Supabase dan lokal akan dihapus total!")) {
+        if (confirm("Yakin ingin menghapus seluruh data?")) {
+            const userId = getUserId();
+            await supabaseClient.from('user_data').delete().eq('user_id', userId);
             localStorage.clear();
             location.reload();
         }
