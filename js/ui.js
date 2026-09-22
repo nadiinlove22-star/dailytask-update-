@@ -16,14 +16,15 @@ function getSelectedDateString() {
 function updateUserInfo() {
     document.getElementById('user-name-display').innerText = `Hey, ${userName}!`;
     document.getElementById('user-avatar').innerText = userName.charAt(0).toUpperCase();
-    document.getElementById('settings-user-name').value = userName;
+    const settingsInput = document.getElementById('settings-user-name');
+    if (settingsInput) settingsInput.value = userName;
 }
 
 function editUserName() {
-    const newName = prompt('Masukkan nama pemilik tugas:', userName);
+    const newName = prompt('Masukkan nama pengguna / panggilannya:', userName);
     if (newName && newName.trim() !== '') {
         userName = newName.trim();
-        localStorage.setItem('daylido_username', userName);
+        saveData();
         updateUserInfo();
     }
 }
@@ -32,8 +33,9 @@ function saveNameFromSettings() {
     const newName = document.getElementById('settings-user-name').value.trim();
     if (newName) {
         userName = newName;
-        localStorage.setItem('daylido_username', userName);
+        saveData();
         updateUserInfo();
+        alert('Nama pengguna berhasil diperbarui!');
     }
 }
 
@@ -83,18 +85,18 @@ function renderTodoList() {
         card.innerHTML = `
             <div class="flex items-center gap-1.5 flex-1 min-w-0">
                 <div class="flex flex-col gap-0.5">
-                    <button onclick="moveTaskUp(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition" title="Pindah ke Atas">▲</button>
-                    <button onclick="moveTaskDown(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition" title="Pindah ke Bawah">▼</button>
+                    <button onclick="moveTaskUp(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition">▲</button>
+                    <button onclick="moveTaskDown(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition">▼</button>
                 </div>
                 <button onclick="toggleCheck(${task.id})" class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold text-xs' : 'border-slate-600 hover:border-emerald-400'}">${isCompleted ? '✓' : ''}</button>
                 <div class="flex-1 min-w-0"><p class="text-xs font-medium text-slate-200 truncate ${isCompleted ? 'line-through text-slate-500' : ''}">${task.title}</p></div>
             </div>
             <div class="flex items-center gap-1 flex-shrink-0">
-                <button onclick="decrementTask(${task.id})" class="w-6 h-6 rounded bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs hover:bg-slate-600 border-0">-</button>
+                <button onclick="decrementTask(${task.id})" class="w-6 h-6 rounded bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs hover:bg-slate-600">-</button>
                 <button onclick="manualSetCount(${task.id}, ${currentVal}, ${task.target})" class="bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-300 hover:border-emerald-500">${task.target === 1 ? (isCompleted ? 'Selesai' : '0/1') : `${currentVal}/${task.target}`}</button>
                 <button onclick="incrementTask(${task.id}, ${task.target})" class="w-6 h-6 rounded bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs hover:bg-emerald-500 hover:text-white">+</button>
                 <button onclick="openEditModal(${task.id})" class="p-1 text-slate-500 hover:text-slate-300 text-xs">✏️</button>
-                <button onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" class="p-1 text-slate-500 hover:text-rose-400 text-xs" title="Hapus Tugas Hari Ini">🗑️</button>
+                <button onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" class="p-1 text-slate-500 hover:text-rose-400 text-xs">🗑️</button>
             </div>
         `;
         container.appendChild(card);
@@ -149,10 +151,11 @@ function manualSetCount(taskId, currentVal, target) {
     }
 }
 
+// KHUSUS RESET: Hanya menghapus progres tanggal terpilih, DAFTAR TUGAS TETAP ADA
 function resetCurrentDay() {
     const dateStr = getSelectedDateString();
-    if (confirm("Reset progres hari ini ke 0%?")) {
-        progressData[dateStr] = {};
+    if (confirm("Reset progres hari ini saja? (Tugas tidak akan terhapus)")) {
+        delete progressData[dateStr];
         saveData();
         renderTodoList();
     }
