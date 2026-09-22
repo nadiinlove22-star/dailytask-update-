@@ -9,16 +9,20 @@ function initApp() {
     const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
     document.getElementById('day-of-year-text').innerText = `Hari ke-${dayOfYear} dari 365`;
 
-    // Muat data dari Supabase online saat pertama kali dibuka
-    loadDataFromSupabase(() => {
-        updateUserInfo();
-        renderDaysBar();
-        changeDay(selectedDay);
-        switchTab('tasks');
-        
-        const cp = document.getElementById('calendar-date-picker');
-        if (cp) cp.value = getTodayDateString();
-    });
+    // Cek apakah sudah login/ada username
+    if (!userName) {
+        openLoginModal();
+    } else {
+        loadDataFromSupabase(() => {
+            updateUserInfo();
+            renderDaysBar();
+            changeDay(selectedDay);
+            switchTab('tasks');
+            
+            const cp = document.getElementById('calendar-date-picker');
+            if (cp) cp.value = getTodayDateString();
+        });
+    }
 }
 
 window.onload = initApp;
