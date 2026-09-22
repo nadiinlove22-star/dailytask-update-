@@ -9,31 +9,36 @@ function toggleAuthMode() {
     const toggleText = document.getElementById('auth-toggle-text');
 
     if (isRegisterMode) {
-        title.innerText = "Buat Akun Baru";
-        subtitle.innerText = "Daftar email dan password untuk menyimpan tugas kamu.";
-        btn.innerText = "Daftar & Masuk";
-        toggleText.innerHTML = `Sudah punya akun? <button type="button" onclick="toggleAuthMode()" class="text-emerald-400 font-semibold hover:underline">Masuk</button>`;
+        if (title) title.innerText = "Buat Akun Baru";
+        if (subtitle) subtitle.innerText = "Daftar email dan password untuk menyimpan tugas kamu.";
+        if (btn) btn.innerText = "Daftar & Masuk";
+        if (toggleText) toggleText.innerHTML = `Sudah punya akun? <button type="button" onclick="toggleAuthMode()" class="text-emerald-400 font-semibold hover:underline">Masuk</button>`;
     } else {
-        title.innerText = "Masuk ke Akun";
-        subtitle.innerText = "Masukkan email dan password untuk sync data.";
-        btn.innerText = "Masuk";
-        toggleText.innerHTML = `Belum punya akun? <button type="button" onclick="toggleAuthMode()" class="text-emerald-400 font-semibold hover:underline">Daftar</button>`;
+        if (title) title.innerText = "Masuk ke Akun";
+        if (subtitle) subtitle.innerText = "Masukkan email dan password untuk sync data.";
+        if (btn) btn.innerText = "Masuk";
+        if (toggleText) toggleText.innerHTML = `Belum punya akun? <button type="button" onclick="toggleAuthMode()" class="text-emerald-400 font-semibold hover:underline">Daftar</button>`;
     }
 }
 
 async function handleAuthSubmit(event) {
     event.preventDefault();
-    const email = document.getElementById('auth-email').value.trim();
-    const password = document.getElementById('auth-password').value.trim();
+    const emailInput = document.getElementById('auth-email');
+    const passwordInput = document.getElementById('auth-password');
     const submitBtn = document.getElementById('auth-submit-btn');
+
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
 
     if (!email || !password) {
         alert("Email dan password wajib diisi!");
         return;
     }
 
-    submitBtn.disabled = true;
-    submitBtn.innerText = "Memproses...";
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Memproses...";
+    }
 
     try {
         if (isRegisterMode) {
@@ -57,9 +62,11 @@ async function handleAuthSubmit(event) {
 
     } catch (err) {
         alert("Gagal autentikasi: " + err.message);
-    } font-bold {
-        submitBtn.disabled = false;
-        submitBtn.innerText = isRegisterMode ? "Daftar & Masuk" : "Masuk";
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = isRegisterMode ? "Daftar & Masuk" : "Masuk";
+        }
     }
 }
 
@@ -189,7 +196,6 @@ function renderTodoList() {
     const countEl = document.getElementById('tasks-count-text');
     if (countEl) countEl.innerText = `${completedCount} dari ${totalTasks} tugas selesai`;
 }
-
 function toggleCheck(taskId) {
     const dateStr = getSelectedDateString();
     const task = tasks.find(t => t.id === taskId);
@@ -272,24 +278,42 @@ function openAddModal() {
         openLoginModal();
         return;
     }
-    document.getElementById('new-task-title').value = '';
-    document.getElementById('new-task-target').value = '1';
-    document.getElementById('new-task-freq').value = 'daily';
-    document.getElementById('new-freq-extra').innerHTML = '';
-    document.getElementById('new-freq-extra').classList.add('hidden');
-    document.getElementById('add-modal').classList.remove('hidden');
-    document.getElementById('add-modal').classList.add('flex');
+    const inputTitle = document.getElementById('new-task-title');
+    const inputTarget = document.getElementById('new-task-target');
+    const inputFreq = document.getElementById('new-task-freq');
+    const extraFreq = document.getElementById('new-freq-extra');
+
+    if (inputTitle) inputTitle.value = '';
+    if (inputTarget) inputTarget.value = '1';
+    if (inputFreq) inputFreq.value = 'daily';
+    if (extraFreq) {
+        extraFreq.innerHTML = '';
+        extraFreq.classList.add('hidden');
+    }
+
+    const modal = document.getElementById('add-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
 }
 
 function closeAddModal() {
-    document.getElementById('add-modal').classList.add('hidden');
-    document.getElementById('add-modal').classList.remove('flex');
+    const modal = document.getElementById('add-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
 }
 
 function saveNewTask() {
-    const title = document.getElementById('new-task-title').value.trim();
-    const target = parseInt(document.getElementById('new-task-target').value) || 1;
-    const freq = document.getElementById('new-task-freq').value;
+    const titleEl = document.getElementById('new-task-title');
+    const targetEl = document.getElementById('new-task-target');
+    const freqEl = document.getElementById('new-task-freq');
+
+    const title = titleEl ? titleEl.value.trim() : '';
+    const target = targetEl ? (parseInt(targetEl.value) || 1) : 1;
+    const freq = freqEl ? freqEl.value : 'daily';
     let freqVal = null;
 
     if (!title) { alert('Nama tugas tidak boleh kosong.'); return; }
@@ -314,10 +338,17 @@ function saveNewTask() {
 function openEditModal(id) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-    document.getElementById('edit-task-id').value = task.id;
-    document.getElementById('edit-task-title').value = task.title;
-    document.getElementById('edit-task-target').value = task.target;
-    document.getElementById('edit-task-freq').value = task.freq || 'daily';
+
+    const idEl = document.getElementById('edit-task-id');
+    const titleEl = document.getElementById('edit-task-title');
+    const targetEl = document.getElementById('edit-task-target');
+    const freqEl = document.getElementById('edit-task-freq');
+
+    if (idEl) idEl.value = task.id;
+    if (titleEl) titleEl.value = task.title;
+    if (targetEl) targetEl.value = task.target;
+    if (freqEl) freqEl.value = task.freq || 'daily';
+
     handleFreqChange('edit');
     if (task.freq === 'weekly' || task.freq === 'monthly' || task.freq === 'specific_date') {
         const el = document.getElementById('edit-freq-val');
@@ -326,20 +357,32 @@ function openEditModal(id) {
         let activeDays = task.freqVal ? task.freqVal.toString().split(',') : [];
         document.querySelectorAll('#edit-custom-days-container input').forEach(cb => { cb.checked = activeDays.includes(cb.value); });
     }
-    document.getElementById('edit-modal').classList.remove('hidden');
-    document.getElementById('edit-modal').classList.add('flex');
+
+    const modal = document.getElementById('edit-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
 }
 
 function closeEditModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
-    document.getElementById('edit-modal').classList.remove('flex');
+    const modal = document.getElementById('edit-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
 }
 
 function saveEditTask() {
-    const id = parseInt(document.getElementById('edit-task-id').value);
-    const title = document.getElementById('edit-task-title').value.trim();
-    const target = parseInt(document.getElementById('edit-task-target').value) || 1;
-    const freq = document.getElementById('edit-task-freq').value;
+    const idEl = document.getElementById('edit-task-id');
+    const titleEl = document.getElementById('edit-task-title');
+    const targetEl = document.getElementById('edit-task-target');
+    const freqEl = document.getElementById('edit-task-freq');
+
+    const id = idEl ? parseInt(idEl.value) : 0;
+    const title = titleEl ? titleEl.value.trim() : '';
+    const target = targetEl ? (parseInt(targetEl.value) || 1) : 1;
+    const freq = freqEl ? freqEl.value : 'daily';
     let freqVal = null;
 
     if (!title) { alert('Nama tugas tidak boleh kosong.'); return; }
@@ -366,9 +409,12 @@ function saveEditTask() {
 function handleFreqChange(type) {
     const selectEl = document.getElementById(`${type}-task-freq`);
     const extraEl = document.getElementById(`${type}-freq-extra`);
+    if (!selectEl || !extraEl) return;
+
     const val = selectEl.value;
     extraEl.innerHTML = '';
     extraEl.classList.add('hidden');
+
     if (val === 'weekly') {
         extraEl.classList.remove('hidden');
         extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Pilih Hari</label><select id="${type}-freq-val" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"><option value="1">Senin</option><option value="2">Selasa</option><option value="3">Rabu</option><option value="4">Kamis</option><option value="5">Jumat</option><option value="6">Sabtu</option><option value="0">Minggu</option></select>`;
@@ -390,32 +436,89 @@ function switchTab(tabName) {
         return;
     }
     document.querySelectorAll('.tab-page').forEach(el => el.classList.add('hidden'));
-    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) targetTab.classList.remove('hidden');
+
     ['tasks', 'calendar', 'stats', 'settings'].forEach(n => {
         const btn = document.getElementById(`nav-${n}`);
-        btn.className = (n === tabName) ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition' : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition';
+        if (btn) {
+            btn.className = (n === tabName) ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition' : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition';
+        }
     });
+
     if (tabName === 'tasks') renderTodoList();
     if (tabName === 'calendar') onCalendarDateChange();
     if (tabName === 'stats') renderStatsTab();
 }
 
 function onCalendarDateChange() {
-    const dateVal = document.getElementById('calendar-date-picker').value;
+    const datePicker = document.getElementById('calendar-date-picker');
+    const dateVal = datePicker ? datePicker.value : '';
     const listContainer = document.getElementById('calendar-tasks-list');
     const labelEl = document.getElementById('calendar-selected-label');
     const countEl = document.getElementById('calendar-task-count');
-    if (!dateVal) return;
+
+    if (!dateVal || !listContainer) return;
+
     const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-    labelEl.innerText = `Agenda: ${formattedDate}`;
+    if (labelEl) labelEl.innerText = `Agenda: ${formattedDate}`;
+
     let matchingTasks = tasks.filter(t => isTaskActiveForDate(t, dateVal));
-    countEl.innerText = `${matchingTasks.length} Kegiatan`;
+    if (countEl) countEl.innerText = `${matchingTasks.length} Kegiatan`;
+
     listContainer.innerHTML = '';
     if (matchingTasks.length === 0) {
         listContainer.innerHTML = `<div class="text-center py-4 text-xs text-slate-500">Tidak ada kegiatan di tanggal ini.</div>`;
         return;
     }
+
     matchingTasks.forEach((task, idx) => {
         const item = document.createElement('div');
         item.className = 'bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 flex items-center justify-between text-xs text-slate-200';
-        item.innerHTML = `<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-cent
+        item.innerHTML = `<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">${idx + 1}</span><span class="font-medium">${task.title}</span></div><span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Target: ${task.target}</span>`;
+        listContainer.appendChild(item);
+    });
+}
+
+function renderStatsTab() {
+    const filterEl = document.getElementById('analytics-filter');
+    const filter = filterEl ? filterEl.value : 'daily';
+    const container = document.getElementById('stats-detail-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+    let totalDoneAll = 0, totalPossibleAll = 0;
+    let periods = filter === 'daily' ? DAYS.map(d => ({ label: d.full, key: d.key })) : [{ label: 'Periode Ini', key: selectedDay }];
+    
+    periods.forEach(p => {
+        const today = new Date();
+        const dayObj = DAYS.find(d => d.key === p.key);
+        let targetDate = new Date(today);
+        if (dayObj) {
+            let diff = dayObj.index - today.getDay();
+            targetDate.setDate(today.getDate() + diff);
+        }
+        const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+
+        const dayProg = progressData[dateStr] || {};
+        let activeTasks = tasks.filter(t => isTaskActiveForDate(t, dateStr));
+        let done = 0;
+        activeTasks.forEach(t => { if ((dayProg[t.id] || 0) >= t.target) done++; });
+        
+        totalDoneAll += done;
+        totalPossibleAll += activeTasks.length;
+        const pct = activeTasks.length === 0 ? 0 : Math.round((done / activeTasks.length) * 100);
+        
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between text-xs py-1 border-b border-slate-700/40 last:border-0';
+        row.innerHTML = `<span class="text-slate-300 font-medium">${p.label}</span><div class="flex items-center gap-2"><div class="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${pct}%"></div></div><span class="text-emerald-400 font-mono text-[11px] font-bold">${pct}%</span></div>`;
+        container.appendChild(row);
+    });
+
+    const overallPct = totalPossibleAll === 0 ? 0 : Math.round((totalDoneAll / Math.max(totalPossibleAll, 1)) * 100);
+    const avgEl = document.getElementById('stat-avg-completion');
+    const doneEl = document.getElementById('stat-total-done');
+
+    if (avgEl) avgEl.innerText = `${overallPct}%`;
+    if (doneEl) doneEl.innerText = totalDoneAll;
+}
