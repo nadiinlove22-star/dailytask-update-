@@ -10,18 +10,21 @@
 </head>
 <body class="bg-[#0b1329] text-slate-100 font-sans select-none min-h-screen flex flex-col justify-between">
     <div class="w-full max-w-md mx-auto p-3 flex flex-col gap-3 pb-20">
-        <!-- Header Profile -->
+        <!-- Header Profile & Login Status -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex items-center justify-between">
             <div>
                 <div class="flex items-center gap-1.5">
-                    <h1 id="user-name-display" class="text-sm font-bold text-white tracking-wide">Hey, DK!</h1>
-                    <button onclick="editUserName()" class="text-xs text-amber-400 hover:text-amber-300">✏️</button>
+                    <h1 id="user-name-display" class="text-sm font-bold text-white tracking-wide">Hey, Guest!</h1>
+                    <button onclick="openLoginModal()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-md transition">Ganti Akun</button>
                 </div>
-                <p id="current-date-text" class="text-[10px] text-slate-400 mt-0.5">-</p>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <p id="current-date-text" class="text-[10px] text-slate-400">-</p>
+                    <span id="sync-status" class="text-[9px] text-emerald-400 font-mono">● Online Sync</span>
+                </div>
             </div>
             <div class="flex items-center gap-2">
                 <div id="day-of-year-text" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">-</div>
-                <div id="user-avatar" class="w-8 h-8 rounded-full bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center font-bold text-emerald-400 text-xs">D</div>
+                <div onclick="openLoginModal()" id="user-avatar" class="w-8 h-8 rounded-full bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center font-bold text-emerald-400 text-xs cursor-pointer">?</div>
             </div>
         </div>
 
@@ -97,17 +100,17 @@
         <!-- Tab 4: Pengaturan -->
         <div id="tab-settings" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
-                <h2 class="text-xs font-bold text-white">Pengaturan Pengguna</h2>
-                <div>
-                    <label class="text-[11px] text-slate-400 block mb-1">Nama Pemilik</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="settings-user-name" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500">
-                        <button onclick="saveNameFromSettings()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">Simpan</button>
+                <h2 class="text-xs font-bold text-white">Akun & Cloud Supabase</h2>
+                <div class="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
+                    <div>
+                        <p id="settings-user-name-display" class="text-xs font-semibold text-white">-</p>
+                        <p class="text-[10px] text-emerald-400">Tersambung ke Cloud</p>
                     </div>
+                    <button onclick="manualSyncFromCloud()" class="bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition">Sync Sekarang</button>
                 </div>
             </div>
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <h2 class="text-xs font-bold text-white">Cadangan & Pemulihan Data</h2>
+                <h2 class="text-xs font-bold text-white">Cadangan & Pemulihan Data Offline</h2>
                 <div class="flex gap-2 mt-1">
                     <button onclick="backupToInternalStorage()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center">Backup JSON</button>
                     <label class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center cursor-pointer">
@@ -118,7 +121,7 @@
             </div>
             <div class="bg-slate-900/80 border border-rose-900/50 rounded-xl p-3 flex flex-col gap-2">
                 <h2 class="text-xs font-bold text-rose-400">Zona Bahaya</h2>
-                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data ke Default</button>
+                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data Akun Ini</button>
             </div>
         </div>
     </div>
@@ -139,7 +142,23 @@
         </button>
     </nav>
 
-    <!-- Modal Tambah & Edit -->
+    <!-- Modal Login / Masuk Akun -->
+    <div id="login-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
+            <h3 class="text-sm font-bold text-white">Login / Buat Akun</h3>
+            <p class="text-[11px] text-slate-400">Masukkan Username untuk memuat atau membuat akun baru yang tersimpan di Cloud Supabase.</p>
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-300">Username / Nama Akun</label>
+                <input type="text" id="login-username-input" placeholder="Contoh: Dedi Kurniawan" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div class="flex gap-2 mt-1">
+                <button onclick="closeLoginModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
+                <button onclick="submitLogin()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Masuk & Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah & Edit Tugas -->
     <div id="add-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
             <h3 class="text-xs font-bold text-white">Tambah Tugas Baru</h3>
