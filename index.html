@@ -2,229 +2,280 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DayliDo - Daily Todo List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DayliDo - Habit & Daily Task Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link id="manifest-placeholder" rel="manifest">
-    <meta name="theme-color" content="#0b1329">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-[#0b1329] text-slate-100 font-sans select-none min-h-screen flex flex-col justify-between">
-    <div class="w-full max-w-md mx-auto p-3 flex flex-col gap-3 pb-20">
-        <!-- Header Profile & Login Status -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex items-center justify-between">
-            <div>
-                <div class="flex items-center gap-1.5">
-                    <h1 id="user-name-display" class="text-sm font-bold text-white tracking-wide">Hey, Guest!</h1>
-                    <button onclick="openLoginModal()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-md transition">Ganti Akun</button>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen pb-20 selection:bg-emerald-500 selection:text-slate-950">
+
+    <!-- Header & Navigation Bar Utama -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div onclick="openLoginModal()" id="user-avatar" class="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 font-bold text-sm cursor-pointer hover:scale-105 transition">
+                    ?
                 </div>
-                <div class="flex items-center gap-2 mt-0.5">
-                    <p id="current-date-text" class="text-[10px] text-slate-400">-</p>
-                    <span id="sync-status" class="text-[9px] text-emerald-400 font-mono">● Online Sync</span>
+                <div>
+                    <h1 id="user-name-display" class="text-sm font-bold text-white leading-tight">Belum Login</h1>
+                    <p id="current-date-text" class="text-[10px] text-slate-400 font-medium">Memuat tanggal...</p>
                 </div>
             </div>
+            
             <div class="flex items-center gap-2">
-                <div id="day-of-year-text" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">-</div>
-                <div onclick="openLoginModal()" id="user-avatar" class="w-8 h-8 rounded-full bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center font-bold text-emerald-400 text-xs cursor-pointer">?</div>
+                <span id="sync-status" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                    ● Off
+                </span>
+                <button onclick="openLoginModal()" class="text-[11px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium px-2.5 py-1 rounded-lg transition">
+                    Akun
+                </button>
             </div>
         </div>
+    </header>
 
-        <!-- Progress Card -->
-        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col gap-2">
-            <div class="flex items-center justify-between text-xs">
-                <span id="day-title" class="font-bold text-emerald-400 tracking-wider text-[11px]">PRODUKTIVITAS</span>
-                <span id="percent-text" class="font-mono font-bold text-emerald-400">0%</span>
-            </div>
-            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                <div id="progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-            </div>
-            <div class="flex items-center justify-between text-[10px] text-slate-400">
-                <span id="tasks-count-text">0 dari 0 tugas selesai</span>
-                <button onclick="resetCurrentDay()" class="hover:text-emerald-400 transition underline">Reset Hari Ini</button>
-            </div>
-        </div>
+    <main class="max-w-md mx-auto p-4 space-y-4">
 
-        <!-- Days Bar -->
-        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-1.5 grid grid-cols-7 gap-1" id="days-bar"></div>
-
-        <!-- Tab 1: Tugas -->
-        <div id="tab-tasks" class="tab-page flex flex-col gap-2">
-            <div id="todo-list" class="flex flex-col gap-2"></div>
-            <button onclick="openAddModal()" class="w-full bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 text-emerald-400 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm mt-1">
-                + Tambah Tugas Baru
-            </button>
-        </div>
-
-        <!-- Tab 2: Kalender -->
-        <div id="tab-calendar" class="tab-page hidden flex flex-col gap-3">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <label class="text-xs font-semibold text-slate-300">Pilih Tanggal Agenda</label>
-                <input type="date" id="calendar-date-picker" onchange="onCalendarDateChange()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        <!-- TAB 1: TASKS (TUGAS HARI INI) -->
+        <section id="tab-tasks" class="tab-page space-y-4">
+            
+            <!-- Days Bar -->
+            <div id="days-bar" class="grid grid-cols-7 gap-1 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
+                <!-- Baris hari akan di-render via UI.js -->
             </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <div class="flex items-center justify-between">
-                    <span id="calendar-selected-label" class="text-xs font-semibold text-emerald-400">Agenda Kegiatan</span>
-                    <span id="calendar-task-count" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono">0 Kegiatan</span>
+
+            <!-- Header Status Hari -->
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 id="day-title" class="text-xs font-bold uppercase tracking-wider text-emerald-400">PRODUKTIVITAS HARI INI</h2>
+                    <span id="percent-text" class="text-xs font-bold font-mono text-emerald-400">0%</span>
                 </div>
-                <div id="calendar-tasks-list" class="flex flex-col gap-1.5 mt-1"></div>
-            </div>
-        </div>
+                
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-2">
+                    <div id="progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
 
-        <!-- Tab 3: Statistik -->
-        <div id="tab-stats" class="tab-page hidden flex flex-col gap-3">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-xs font-bold text-white">Statistik Produktivitas</h2>
-                    <select id="analytics-filter" onchange="renderStatsTab()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] text-white">
-                        <option value="daily">Harian</option>
-                        <option value="weekly">Mingguan</option>
-                        <option value="monthly">Bulanan</option>
+                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span id="tasks-count-text">0 tugas selesai</span>
+                    <button onclick="resetCurrentDay()" class="text-slate-500 hover:text-rose-400 transition">Reset Hari Ini</button>
+                </div>
+            </div>
+
+            <!-- Tombol Tambah Tugas -->
+            <button onclick="openAddModal()" class="w-full py-2.5 px-4 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-sm">
+                <span>+</span> Tambah Tugas / Kebiasaan Baru
+            </button>
+
+            <!-- List Todo Item -->
+            <div id="todo-list" class="space-y-2">
+                <div class="text-center py-8 text-xs text-slate-500">Memuat tugas...</div>
+            </div>
+        </section>
+
+        <!-- TAB 2: CALENDAR (AGENDA TANGGAL) -->
+        <section id="tab-calendar" class="tab-page hidden space-y-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                <label class="text-xs font-semibold text-slate-300 block mb-2">Pilih Tanggal Agenda</label>
+                <input type="date" id="calendar-date-picker" onchange="onCalendarDateChange()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h3 id="calendar-selected-label" class="text-xs font-bold text-white">Agenda Tanggal</h3>
+                    <span id="calendar-task-count" class="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">0 Kegiatan</span>
+                </div>
+                <div id="calendar-tasks-list" class="space-y-2">
+                    <div class="text-center py-4 text-xs text-slate-500">Pilih tanggal di atas untuk melihat agenda.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: STATS (ANALITIK & PROGRES) -->
+        <section id="tab-stats" class="tab-page hidden space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
+                    <p class="text-[10px] text-slate-400 uppercase font-semibold">Rata-rata Selesai</p>
+                    <p id="stat-avg-completion" class="text-2xl font-bold font-mono text-emerald-400 mt-1">0%</p>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
+                    <p class="text-[10px] text-slate-400 uppercase font-semibold">Total Tugas Tuntas</p>
+                    <p id="stat-total-done" class="text-2xl font-bold font-mono text-white mt-1">0</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h3 class="text-xs font-bold text-white">Rincian Performa</h3>
+                    <select id="analytics-filter" onchange="renderStatsTab()" class="bg-slate-800 text-[10px] text-slate-300 rounded border border-slate-700 px-2 py-1">
+                        <option value="daily">Per Hari (Minggu Ini)</option>
+                        <option value="selected">Hari Yang Dipilih</option>
                     </select>
                 </div>
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
-                        <span class="text-[10px] text-slate-400">Rata-rata Selesai</span>
-                        <span id="stat-avg-completion" class="text-base font-bold text-emerald-400 mt-0.5">0%</span>
-                    </div>
-                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
-                        <span class="text-[10px] text-slate-400">Total Tugas Selesai</span>
-                        <span id="stat-total-done" class="text-base font-bold text-blue-400 mt-0.5">0</span>
-                    </div>
-                </div>
+                <div id="stats-detail-list" class="space-y-2"></div>
             </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <h3 class="text-xs font-semibold text-slate-300">Detail Kinerja Periode</h3>
-                <div id="stats-detail-list" class="flex flex-col gap-1.5"></div>
-            </div>
-        </div>
+        </section>
 
-        <!-- Tab 4: Pengaturan -->
-        <div id="tab-settings" class="tab-page hidden flex flex-col gap-3">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
-                <h2 class="text-xs font-bold text-white">Akun & Cloud Supabase</h2>
-                <div class="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
-                    <div>
-                        <p id="settings-user-name-display" class="text-xs font-semibold text-white">-</p>
-                        <p class="text-[10px] text-emerald-400">Tersambung ke Cloud</p>
-                    </div>
-                    <button onclick="manualSyncFromCloud()" class="bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition">Sync Sekarang</button>
+        <!-- TAB 4: SETTINGS (PENGATURAN & AKUN) -->
+        <section id="tab-settings" class="tab-page hidden space-y-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <h3 class="text-xs font-bold text-white border-b border-slate-800 pb-2">Profil & Cloud Sync</h3>
+                <p id="settings-user-name-display" class="text-xs text-slate-300 font-medium">Belum Terhubung Akun</p>
+                <div class="flex gap-2">
+                    <button onclick="openLoginModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Ganti / Login Akun</button>
+                    <button onclick="handleLogout()" class="bg-slate-800 hover:bg-rose-900/50 text-rose-400 border border-slate-700 py-2 px-3 rounded-xl text-xs transition">Logout</button>
                 </div>
             </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <h2 class="text-xs font-bold text-white">Cadangan & Pemulihan Data Offline</h2>
-                <div class="flex gap-2 mt-1">
-                    <button onclick="backupToInternalStorage()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center">Backup JSON</button>
-                    <label class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center cursor-pointer">
-                        Restore JSON
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <h3 class="text-xs font-bold text-white border-b border-slate-800 pb-2">Cadangan Lokal (JSON)</h3>
+                <div class="flex gap-2">
+                    <button onclick="backupToInternalStorage()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-2 rounded-xl text-xs transition">Export JSON</button>
+                    <label class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-2 rounded-xl text-xs text-center cursor-pointer transition">
+                        Import JSON
                         <input type="file" accept=".json" onchange="restoreFromInternalStorage(event)" class="hidden">
                     </label>
                 </div>
             </div>
-            <div class="bg-slate-900/80 border border-rose-900/50 rounded-xl p-3 flex flex-col gap-2">
-                <h2 class="text-xs font-bold text-rose-400">Zona Bahaya</h2>
-                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data Akun Ini</button>
+
+            <div class="bg-slate-900 border border-rose-900/30 rounded-2xl p-4 space-y-2">
+                <h3 class="text-xs font-bold text-rose-400">Zona Bahaya</h3>
+                <button onclick="resetAllData()" class="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 py-2 rounded-xl text-xs font-bold transition">Hapus Semua Data Akun Ini</button>
             </div>
-        </div>
-    </div>
+        </section>
+
+    </main>
 
     <!-- Bottom Navigation Bar -->
-    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-1.5 z-40 text-[10px]">
-        <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition">
-            <span class="text-base leading-none mb-0.5">📋</span> Tugas
-        </button>
-        <button onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
-            <span class="text-base leading-none mb-0.5">📅</span> Kalender
-        </button>
-        <button onclick="switchTab('stats')" id="nav-stats" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
-            <span class="text-base leading-none mb-0.5">📊</span> Analitik
-        </button>
-        <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
-            <span class="text-base leading-none mb-0.5">⚙️</span> Pengaturan
-        </button>
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800/80 z-40 py-1.5">
+        <div class="max-w-md mx-auto flex justify-around items-center text-[10px]">
+            <button id="nav-tasks" onclick="switchTab('tasks')" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition">
+                <span class="text-base">📋</span>
+                <span>Tugas</span>
+            </button>
+            <button id="nav-calendar" onclick="switchTab('calendar')" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+                <span class="text-base">📅</span>
+                <span>Agenda</span>
+            </button>
+            <button id="nav-stats" onclick="switchTab('stats')" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+                <span class="text-base">📊</span>
+                <span>Analitik</span>
+            </button>
+            <button id="nav-settings" onclick="switchTab('settings')" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+                <span class="text-base">⚙️</span>
+                <span>Pengaturan</span>
+            </button>
+        </div>
     </nav>
 
-    <!-- Modal Login / Masuk Akun -->
-    <div id="login-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
-            <h3 class="text-sm font-bold text-white">Login / Buat Akun</h3>
-            <p class="text-[11px] text-slate-400">Masukkan Username untuk memuat atau membuat akun baru yang tersimpan di Cloud Supabase.</p>
-            <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-300">Username / Nama Akun</label>
-                <input type="text" id="login-username-input" placeholder="Contoh: Dedi Kurniawan" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+    <!-- MODAL AUTH: LOGIN & DAFTAR -->
+    <div id="login-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-xs flex flex-col gap-3 shadow-2xl">
+            <div class="text-center">
+                <div class="w-10 h-10 bg-emerald-500/20 border border-emerald-500/40 rounded-full flex items-center justify-center text-emerald-400 text-lg font-bold mx-auto mb-2">🔐</div>
+                <h3 id="auth-modal-title" class="text-base font-bold text-white">Masuk ke Akun</h3>
+                <p id="auth-modal-subtitle" class="text-[11px] text-slate-400 mt-0.5">Masukkan email dan password untuk sync data.</p>
             </div>
-            <div class="flex gap-2 mt-1">
-                <button onclick="closeLoginModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
-                <button onclick="submitLogin()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Masuk & Sync</button>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="flex flex-col gap-2.5 mt-1">
+                <div class="flex flex-col gap-1 text-left">
+                    <label class="text-[10px] font-semibold text-slate-300">Email</label>
+                    <input type="email" id="auth-email" required placeholder="nama@email.com" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="flex flex-col gap-1 text-left">
+                    <label class="text-[10px] font-semibold text-slate-300">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" minlength="6" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <button type="submit" id="auth-submit-btn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition shadow-md mt-1">
+                    Masuk
+                </button>
+            </form>
+
+            <div class="text-center border-t border-slate-800 pt-3 flex flex-col gap-2">
+                <p id="auth-toggle-text" class="text-[11px] text-slate-400">
+                    Belum punya akun? 
+                    <button type="button" onclick="toggleAuthMode()" class="text-emerald-400 font-semibold hover:underline">Daftar</button>
+                </p>
+                <button onclick="closeLoginModal()" class="text-[10px] text-slate-500 hover:text-slate-300">Tutup Modals</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Tambah & Edit Tugas -->
+    <!-- MODAL TAMBAH TUGAS -->
     <div id="add-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
-            <h3 class="text-xs font-bold text-white">Tambah Tugas Baru</h3>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-xs flex flex-col gap-3 shadow-2xl">
+            <h3 class="text-sm font-bold text-white">Tambah Tugas Baru</h3>
+            
             <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Nama Tugas</label>
-                <input type="text" id="new-task-title" placeholder="Contoh: Baca buku..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <label class="text-[11px] text-slate-400">Nama Tugas / Kebiasaan</label>
+                <input type="text" id="new-task-title" placeholder="Contoh: Olahraga Pagi" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
+
             <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Target Harian</label>
+                <label class="text-[11px] text-slate-400">Target Harian (Jumlah / Frekuensi)</label>
                 <input type="number" id="new-task-target" min="1" value="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
+
             <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Frekuensi Tugas</label>
-                <select id="new-task-freq" onchange="handleFreqChange('new')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <label class="text-[11px] text-slate-400">Jadwal / Frekuensi</label>
+                <select id="new-task-freq" onchange="handleFreqChange('new')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
                     <option value="daily">Setiap Hari</option>
-                    <option value="weekly">Mingguan</option>
-                    <option value="monthly">Bulanan</option>
-                    <option value="specific_date">Tanggal Spesifik</option>
-                    <option value="custom_day">Kustom Hari</option>
+                    <option value="weekly">Mingguan (Hari Tertentu)</option>
+                    <option value="monthly">Bulanan (Tanggal Tertentu)</option>
+                    <option value="specific_date">Tanggal Khusus</option>
+                    <option value="custom_day">Pilih Beberapa Hari</option>
                 </select>
             </div>
-            <div id="new-freq-extra" class="hidden flex flex-col gap-1"></div>
-            <div class="flex gap-2 mt-1">
-                <button onclick="closeAddModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
-                <button onclick="saveNewTask()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Simpan</button>
+
+            <div id="new-freq-extra" class="hidden flex-col gap-1"></div>
+
+            <div class="flex items-center justify-end gap-2 mt-2">
+                <button onclick="closeAddModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-800">Batal</button>
+                <button onclick="saveNewTask()" class="px-4 py-1.5 rounded-lg text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold">Simpan</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL EDIT TUGAS -->
     <div id="edit-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
-            <h3 class="text-xs font-bold text-white">Edit Tugas</h3>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-xs flex flex-col gap-3 shadow-2xl">
+            <h3 class="text-sm font-bold text-white">Edit Tugas</h3>
             <input type="hidden" id="edit-task-id">
+            
             <div class="flex flex-col gap-1">
                 <label class="text-[11px] text-slate-400">Nama Tugas</label>
                 <input type="text" id="edit-task-title" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
+
             <div class="flex flex-col gap-1">
                 <label class="text-[11px] text-slate-400">Target Harian</label>
                 <input type="number" id="edit-task-target" min="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
+
             <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Frekuensi</label>
-                <select id="edit-task-freq" onchange="handleFreqChange('edit')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <label class="text-[11px] text-slate-400">Jadwal / Frekuensi</label>
+                <select id="edit-task-freq" onchange="handleFreqChange('edit')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
                     <option value="daily">Setiap Hari</option>
-                    <option value="weekly">Mingguan</option>
-                    <option value="monthly">Bulanan</option>
-                    <option value="specific_date">Tanggal Spesifik</option>
-                    <option value="custom_day">Kustom Hari</option>
+                    <option value="weekly">Mingguan (Hari Tertentu)</option>
+                    <option value="monthly">Bulanan (Tanggal Tertentu)</option>
+                    <option value="specific_date">Tanggal Khusus</option>
+                    <option value="custom_day">Pilih Beberapa Hari</option>
                 </select>
             </div>
-            <div id="edit-freq-extra" class="hidden flex flex-col gap-1"></div>
-            <div class="flex gap-2 mt-1">
-                <button onclick="closeEditModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
-                <button onclick="saveEditTask()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Simpan</button>
+
+            <div id="edit-freq-extra" class="hidden flex-col gap-1"></div>
+
+            <div class="flex items-center justify-end gap-2 mt-2">
+                <button onclick="closeEditModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-800">Batal</button>
+                <button onclick="saveEditTask()" class="px-4 py-1.5 rounded-lg text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold">Perbarui</button>
             </div>
         </div>
     </div>
 
-    <!-- SDK Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- Skrip Aplikasi Modular -->
+    <!-- Script Pemanggilan File JavaScript -->
     <script src="js/config.js"></script>
     <script src="js/storage.js"></script>
-    <script src="js/tasks.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>
 </body>
