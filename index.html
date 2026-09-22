@@ -3,60 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DayliDo Pro - Task & Productivity</title>
+    <title>DayliDo - Daily Todo List</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link id="manifest-placeholder" rel="manifest">
     <meta name="theme-color" content="#0b1329">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
 </head>
-<body class="bg-[#0b1329] dark:bg-[#0b1329] text-slate-100 font-sans select-none min-h-screen flex flex-col justify-between transition-colors duration-300" id="app-body">
-
-    <!-- Screen Auth (Login / Register) -->
-    <div id="auth-screen" class="fixed inset-0 bg-[#0b1329] z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4 shadow-2xl">
-            <div class="text-center">
-                <h1 class="text-xl font-bold text-emerald-400">DayliDo Pro</h1>
-                <p class="text-xs text-slate-400 mt-1">Masuk untuk sinkronisasi tugas di semua perangkat</p>
-            </div>
-            <div class="flex flex-col gap-2">
-                <input type="email" id="auth-email" placeholder="Email (contoh: user@gmail.com)" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
-                <input type="password" id="auth-password" placeholder="Kata Sandi" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
-            </div>
-            <div class="flex flex-col gap-2 mt-1">
-                <button onclick="handleLogin()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition shadow-lg">Masuk (Login)</button>
-                <button onclick="handleRegister()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl text-xs transition">Daftar Akun Baru</button>
-            </div>
-            <div id="auth-error" class="text-[11px] text-rose-400 text-center hidden"></div>
-        </div>
-    </div>
-
-    <!-- Main App Container -->
-    <div id="main-app" class="w-full max-w-md mx-auto p-3 flex flex-col gap-3 pb-20 hidden">
-        <!-- Top Bar -->
+<body class="bg-[#0b1329] text-slate-100 font-sans select-none min-h-screen flex flex-col justify-between">
+    <div class="w-full max-w-md mx-auto p-3 flex flex-col gap-3 pb-20">
+        <!-- Header Profile -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex items-center justify-between">
             <div>
                 <div class="flex items-center gap-1.5">
-                    <h1 id="user-name-display" class="text-sm font-bold text-white tracking-wide">Hey, User!</h1>
-                    <button onclick="editUserName()" class="text-xs text-amber-400 hover:text-amber-300" title="Edit Nama">✏️</button>
+                    <h1 id="user-name-display" class="text-sm font-bold text-white tracking-wide">Hey, DK!</h1>
+                    <button onclick="editUserName()" class="text-xs text-amber-400 hover:text-amber-300">✏️</button>
                 </div>
-                <p id="current-date-text" class="text-[10px] text-slate-400 mt-0.5">Rabu, 23 Sep 2026</p>
+                <p id="current-date-text" class="text-[10px] text-slate-400 mt-0.5">-</p>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="toggleDarkMode()" class="p-1.5 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 transition" title="Toggle Tema">🌙/☀️</button>
-                <div id="day-of-year-text" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">Hari ke-266</div>
-                <div id="user-avatar" class="w-8 h-8 rounded-full bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center font-bold text-emerald-400 text-xs">U</div>
+                <div id="day-of-year-text" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">-</div>
+                <div id="user-avatar" class="w-8 h-8 rounded-full bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center font-bold text-emerald-400 text-xs">D</div>
             </div>
         </div>
 
-        <!-- Progress Bar Card -->
+        <!-- Progress Card -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col gap-2">
             <div class="flex items-center justify-between text-xs">
-                <span id="day-title" class="font-bold text-emerald-400 tracking-wider text-[11px]">PRODUKTIVITAS HARI INI</span>
+                <span id="day-title" class="font-bold text-emerald-400 tracking-wider text-[11px]">PRODUKTIVITAS</span>
                 <span id="percent-text" class="font-mono font-bold text-emerald-400">0%</span>
             </div>
             <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -66,23 +38,6 @@
                 <span id="tasks-count-text">0 dari 0 tugas selesai</span>
                 <button onclick="resetCurrentDay()" class="hover:text-emerald-400 transition underline">Reset Hari Ini</button>
             </div>
-        </div>
-
-        <!-- Filter Bar -->
-        <div class="flex items-center gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-            <select id="filter-category" onchange="renderTodoList()" class="bg-slate-800 text-slate-300 border border-slate-700 rounded-lg px-2 py-1 text-[10px] flex-1">
-                <option value="all">Semua Kategori</option>
-                <option value="Kerja">💼 Kerja</option>
-                <option value="Pribadi">👤 Pribadi</option>
-                <option value="Kesehatan">🏋️ Kesehatan</option>
-                <option value="Belajar">📚 Belajar</option>
-            </select>
-            <select id="filter-priority" onchange="renderTodoList()" class="bg-slate-800 text-slate-300 border border-slate-700 rounded-lg px-2 py-1 text-[10px] flex-1">
-                <option value="all">Semua Prioritas</option>
-                <option value="tinggi">🔴 Tinggi</option>
-                <option value="sedang">🟡 Sedang</option>
-                <option value="rendah">🟢 Rendah</option>
-            </select>
         </div>
 
         <!-- Days Bar -->
@@ -100,7 +55,7 @@
         <div id="tab-calendar" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
                 <label class="text-xs font-semibold text-slate-300">Pilih Tanggal Agenda</label>
-                <input type="date" id="calendar-date-picker" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <input type="date" id="calendar-date-picker" onchange="onCalendarDateChange()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
@@ -111,7 +66,35 @@
             </div>
         </div>
 
-        <!-- Tab 3: Pengaturan -->
+        <!-- Tab 3: Statistik -->
+        <div id="tab-stats" class="tab-page hidden flex flex-col gap-3">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xs font-bold text-white">Statistik Produktivitas</h2>
+                    <select id="analytics-filter" onchange="renderStatsTab()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] text-white">
+                        <option value="daily">Harian</option>
+                        <option value="weekly">Mingguan</option>
+                        <option value="monthly">Bulanan</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
+                        <span class="text-[10px] text-slate-400">Rata-rata Selesai</span>
+                        <span id="stat-avg-completion" class="text-base font-bold text-emerald-400 mt-0.5">0%</span>
+                    </div>
+                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
+                        <span class="text-[10px] text-slate-400">Total Tugas Selesai</span>
+                        <span id="stat-total-done" class="text-base font-bold text-blue-400 mt-0.5">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <h3 class="text-xs font-semibold text-slate-300">Detail Kinerja Periode</h3>
+                <div id="stats-detail-list" class="flex flex-col gap-1.5"></div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Pengaturan -->
         <div id="tab-settings" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
                 <h2 class="text-xs font-bold text-white">Pengaturan Pengguna</h2>
@@ -122,30 +105,41 @@
                         <button onclick="saveNameFromSettings()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">Simpan</button>
                     </div>
                 </div>
-                <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
-                    <button onclick="handleLogout()" class="text-xs bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-lg font-semibold">Keluar (Logout)</button>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <h2 class="text-xs font-bold text-white">Cadangan & Pemulihan Data</h2>
+                <div class="flex gap-2 mt-1">
+                    <button onclick="backupToInternalStorage()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center">Backup JSON</button>
+                    <label class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center cursor-pointer">
+                        Restore JSON
+                        <input type="file" accept=".json" onchange="restoreFromInternalStorage(event)" class="hidden">
+                    </label>
                 </div>
             </div>
             <div class="bg-slate-900/80 border border-rose-900/50 rounded-xl p-3 flex flex-col gap-2">
                 <h2 class="text-xs font-bold text-rose-400">Zona Bahaya</h2>
-                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data</button>
+                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data ke Default</button>
             </div>
         </div>
     </div>
 
-    <!-- Navigation Bar -->
-    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-1.5 z-40 text-[10px] hidden">
-        <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/3 py-1 transition">
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-1.5 z-40 text-[10px]">
+        <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition">
             <span class="text-base leading-none mb-0.5">📋</span> Tugas
         </button>
-        <button onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/3 py-1 transition">
+        <button onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
             <span class="text-base leading-none mb-0.5">📅</span> Kalender
         </button>
-        <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/3 py-1 transition">
+        <button onclick="switchTab('stats')" id="nav-stats" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+            <span class="text-base leading-none mb-0.5">📊</span> Analitik
+        </button>
+        <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
             <span class="text-base leading-none mb-0.5">⚙️</span> Pengaturan
         </button>
     </nav>
-        <!-- Modal Tambah Tugas -->
+
+    <!-- Modal Tambah & Edit -->
     <div id="add-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
             <h3 class="text-xs font-bold text-white">Tambah Tugas Baru</h3>
@@ -153,35 +147,18 @@
                 <label class="text-[11px] text-slate-400">Nama Tugas</label>
                 <input type="text" id="new-task-title" placeholder="Contoh: Baca buku..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] text-slate-400">Kategori</label>
-                    <select id="new-task-category" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
-                        <option value="Kerja">💼 Kerja</option>
-                        <option value="Pribadi">👤 Pribadi</option>
-                        <option value="Kesehatan">🏋️ Kesehatan</option>
-                        <option value="Belajar">📚 Belajar</option>
-                    </select>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] text-slate-400">Prioritas</label>
-                    <select id="new-task-priority" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
-                        <option value="sedang">🟡 Sedang</option>
-                        <option value="tinggi">🔴 Tinggi</option>
-                        <option value="rendah">🟢 Rendah</option>
-                    </select>
-                </div>
-            </div>
             <div class="flex flex-col gap-1">
                 <label class="text-[11px] text-slate-400">Target Harian</label>
                 <input type="number" id="new-task-target" min="1" value="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
             <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Frekuensi</label>
-                <select id="new-task-freq" onchange="handleFreqChange('new')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
+                <label class="text-[11px] text-slate-400">Frekuensi Tugas</label>
+                <select id="new-task-freq" onchange="handleFreqChange('new')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                     <option value="daily">Setiap Hari</option>
                     <option value="weekly">Mingguan</option>
                     <option value="monthly">Bulanan</option>
+                    <option value="specific_date">Tanggal Spesifik</option>
+                    <option value="custom_day">Kustom Hari</option>
                 </select>
             </div>
             <div id="new-freq-extra" class="hidden flex flex-col gap-1"></div>
@@ -192,7 +169,6 @@
         </div>
     </div>
 
-    <!-- Modal Edit Tugas -->
     <div id="edit-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
             <h3 class="text-xs font-bold text-white">Edit Tugas</h3>
@@ -201,441 +177,33 @@
                 <label class="text-[11px] text-slate-400">Nama Tugas</label>
                 <input type="text" id="edit-task-title" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] text-slate-400">Kategori</label>
-                    <select id="edit-task-category" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
-                        <option value="Kerja">💼 Kerja</option>
-                        <option value="Pribadi">👤 Pribadi</option>
-                        <option value="Kesehatan">🏋️ Kesehatan</option>
-                        <option value="Belajar">📚 Belajar</option>
-                    </select>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] text-slate-400">Prioritas</label>
-                    <select id="edit-task-priority" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
-                        <option value="sedang">🟡 Sedang</option>
-                        <option value="tinggi">🔴 Tinggi</option>
-                        <option value="rendah">🟢 Rendah</option>
-                    </select>
-                </div>
-            </div>
             <div class="flex flex-col gap-1">
                 <label class="text-[11px] text-slate-400">Target Harian</label>
                 <input type="number" id="edit-task-target" min="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Frekuensi</label>
+                <select id="edit-task-freq" onchange="handleFreqChange('edit')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <option value="daily">Setiap Hari</option>
+                    <option value="weekly">Mingguan</option>
+                    <option value="monthly">Bulanan</option>
+                    <option value="specific_date">Tanggal Spesifik</option>
+                    <option value="custom_day">Kustom Hari</option>
+                </select>
+            </div>
+            <div id="edit-freq-extra" class="hidden flex flex-col gap-1"></div>
             <div class="flex gap-2 mt-1">
                 <button onclick="closeEditModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
                 <button onclick="saveEditTask()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Simpan</button>
             </div>
         </div>
     </div>
-        <script>
-        const SUPABASE_URL = "https://wkjxohnhhgenfvxiorkh.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndranhvaG5oaGdlbmZ2eGlvcmtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDI4MTgsImV4cCI6MjEwNTY3ODgxOH0.j5oNNjLnnmM0e-ltWftL09R9rMKaIQ6dyliE_aytTc8";
-        
-        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const DAYS = [
-            { key: 'Sen', full: 'SENIN', index: 1 },
-            { key: 'Sel', full: 'SELASA', index: 2 },
-            { key: 'Rab', full: 'RABU', index: 3 },
-            { key: 'Kam', full: 'KAMIS', index: 4 },
-            { key: 'Jum', full: 'JUMAT', index: 5 },
-            { key: 'Sab', full: 'SABTU', index: 6 },
-            { key: 'Min', full: 'MINGGU', index: 0 }
-        ];
-
-        let currentUser = null;
-        let userName = localStorage.getItem('daylido_username') || 'User';
-        let tasks = [];
-        let progressData = {};
-        let selectedDay = getTodayKey();
-
-        function getTodayKey() {
-            const dayNum = new Date().getDay();
-            const found = DAYS.find(d => d.index === dayNum);
-            return found ? found.key : 'Sen';
-        }
-
-        function getTodayDateString() {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        }
-
-        async function checkSession() {
-            const { data: { session } } = await db.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                showAppUI();
-            } else {
-                showAuthUI();
-            }
-        }
-
-        async function handleLogin() {
-            const email = document.getElementById('auth-email').value.trim();
-            const password = document.getElementById('auth-password').value.trim();
-            const errEl = document.getElementById('auth-error');
-            errEl.classList.add('hidden');
-
-            const { data, error } = await db.auth.signInWithPassword({ email, password });
-            if (error) {
-                errEl.innerText = error.message;
-                errEl.classList.remove('hidden');
-            } else {
-                currentUser = data.user;
-                showAppUI();
-            }
-        }
-
-        async function handleRegister() {
-            const email = document.getElementById('auth-email').value.trim();
-            const password = document.getElementById('auth-password').value.trim();
-            const errEl = document.getElementById('auth-error');
-            errEl.classList.add('hidden');
-
-            const { data, error } = await db.auth.signUp({ email, password });
-            if (error) {
-                errEl.innerText = error.message;
-                errEl.classList.remove('hidden');
-            } else {
-                alert("Pendaftaran berhasil! Silakan Login.");
-            }
-        }
-
-        async function handleLogout() {
-            await db.auth.signOut();
-            currentUser = null;
-            showAuthUI();
-        }
-
-        function showAuthUI() {
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('main-app').classList.add('hidden');
-            document.getElementById('bottom-nav').classList.add('hidden');
-        }
-
-        function showAppUI() {
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-            document.getElementById('bottom-nav').classList.remove('hidden');
-            initApp();
-        }
-
-        async function initApp() {
-            selectedDay = getTodayKey();
-            updateUserInfo();
-            updateCurrentDateDisplay();
-            calculateDayOfYear();
-            renderDaysBar();
-            switchTab('tasks');
-            
-            await fetchTasksFromSupabase();
-            setupRealtimeSync();
-        }
-
-        async function fetchTasksFromSupabase() {
-            if (!currentUser) return;
-            const { data, error } = await db.from('tasks').select('*').eq('user_id', currentUser.id).order('id', { ascending: true });
-            if (!error && data) {
-                tasks = data.map(t => ({
-                    id: t.id,
-                    title: t.title,
-                    target: t.target || 1,
-                    current: t.current || 0,
-                    category: t.category || 'Pribadi',
-                    priority: t.priority || 'sedang',
-                    freq: t.freq || 'daily',
-                    freqVal: t.freq_val || ''
-                }));
-
-                if (!progressData[selectedDay]) progressData[selectedDay] = {};
-                tasks.forEach(t => {
-                    progressData[selectedDay][t.id] = t.current;
-                });
-            }
-            renderTodoList();
-        }
-
-        function setupRealtimeSync() {
-            if (!currentUser) return;
-            db.channel('public:tasks')
-              .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${currentUser.id}` }, () => {
-                  fetchTasksFromSupabase();
-              })
-              .subscribe();
-        }
-
-        function toggleDarkMode() {
-            document.documentElement.classList.toggle('dark');
-        }
-
-        function updateUserInfo() {
-            document.getElementById('user-name-display').innerText = `Hey, ${userName}!`;
-            document.getElementById('user-avatar').innerText = userName.charAt(0).toUpperCase();
-            document.getElementById('settings-user-name').value = userName;
-        }
-
-        function editUserName() {
-            const newName = prompt('Masukkan nama pemilik tugas:', userName);
-            if (newName && newName.trim() !== '') {
-                userName = newName.trim();
-                localStorage.setItem('daylido_username', userName);
-                updateUserInfo();
-            }
-        }
-
-        function saveNameFromSettings() {
-            const newName = document.getElementById('settings-user-name').value.trim();
-            if (newName) {
-                userName = newName;
-                localStorage.setItem('daylido_username', userName);
-                updateUserInfo();
-            }
-        }
-
-        function updateCurrentDateDisplay() {
-            const now = new Date();
-            document.getElementById('current-date-text').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-        }
-
-        function calculateDayOfYear() {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), 0, 0);
-            const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-            document.getElementById('day-of-year-text').innerText = `Hari ke-${dayOfYear} dari 365`;
-        }
-
-        function renderDaysBar() {
-            const container = document.getElementById('days-bar');
-            container.innerHTML = '';
-            const todayKey = getTodayKey();
-            DAYS.forEach(day => {
-                const isActive = day.key === selectedDay;
-                const isToday = day.key === todayKey;
-                const btn = document.createElement('button');
-                btn.onclick = () => changeDay(day.key);
-                btn.className = `flex flex-col items-center justify-center py-1.5 rounded-lg text-[10px] font-semibold transition ${isActive ? 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-400 shadow' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`;
-                btn.innerHTML = `<div class="w-2 h-2 rounded-full mb-1 ${isActive ? 'bg-emerald-400' : (isToday ? 'bg-blue-400' : 'bg-slate-700')}"></div><span>${day.key}</span>`;
-                container.appendChild(btn);
-            });
-        }
-
-        function changeDay(dayKey) {
-            selectedDay = dayKey;
-            const dayObj = DAYS.find(d => d.key === dayKey);
-            if (dayObj) document.getElementById('day-title').innerText = `PRODUKTIVITAS ${dayObj.full}`;
-            renderDaysBar();
-            renderTodoList();
-        }
-
-        function getFilteredTasks() {
-            const catFilter = document.getElementById('filter-category').value;
-            const prioFilter = document.getElementById('filter-priority').value;
-            
-            return tasks.filter(t => {
-                const matchCat = catFilter === 'all' || t.category === catFilter;
-                const matchPrio = prioFilter === 'all' || t.priority === prioFilter;
-                return matchCat && matchPrio;
-            });
-        }
-
-        function renderTodoList() {
-            const container = document.getElementById('todo-list');
-            container.innerHTML = '';
-            const dayProgress = progressData[selectedDay] || {};
-            let visibleTasks = getFilteredTasks();
-            let completedCount = 0;
-
-            if (visibleTasks.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Tidak ada tugas sesuai filter/hari ini.</div>`;
-            }
-
-            visibleTasks.forEach((task) => {
-                const currentVal = dayProgress[task.id] !== undefined ? dayProgress[task.id] : (task.current || 0);
-                const isCompleted = currentVal >= task.target;
-                if (isCompleted) completedCount++;
-
-                const prioColor = task.priority === 'tinggi' ? 'border-l-rose-500' : (task.priority === 'rendah' ? 'border-l-emerald-500' : 'border-l-amber-500');
-
-                const card = document.createElement('div');
-                card.className = `bg-slate-800/60 border border-slate-700/50 border-l-4 ${prioColor} rounded-xl p-2 flex items-center justify-between gap-1.5 shadow-sm transition hover:border-slate-600 ${isCompleted ? 'bg-slate-800/30' : ''}`;
-                card.innerHTML = `
-                    <div class="flex items-center gap-1.5 flex-1 min-w-0">
-                        <button onclick="toggleCheck('${task.id}')" class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold text-xs' : 'border-slate-600 hover:border-emerald-400'}">${isCompleted ? '✓' : ''}</button>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs font-medium text-slate-200 truncate ${isCompleted ? 'line-through text-slate-500' : ''}">${task.title}</p>
-                            <span class="text-[9px] text-slate-400 bg-slate-900/60 px-1.5 py-0.5 rounded">${task.category || 'Pribadi'}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1 flex-shrink-0">
-                        <button onclick="decrementTask('${task.id}')" class="w-6 h-6 rounded bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs hover:bg-slate-600">-</button>
-                        <button onclick="manualSetCount('${task.id}', ${currentVal}, ${task.target})" class="bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-300 hover:border-emerald-500">${task.target === 1 ? (isCompleted ? 'Selesai' : '0/1') : `${currentVal}/${task.target}`}</button>
-                        <button onclick="incrementTask('${task.id}', ${task.target})" class="w-6 h-6 rounded bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs hover:bg-emerald-500 hover:text-white">+</button>
-                        <button onclick="openEditModal('${task.id}')" class="p-1 text-slate-500 hover:text-slate-300 text-xs">✏️</button>
-                        <button onclick="deleteTask('${task.id}', '${task.title.replace(/'/g, "\\'")}')" class="p-1 text-slate-500 hover:text-rose-400 text-xs">🗑️</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-
-            const totalTasks = visibleTasks.length;
-            const percent = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
-            document.getElementById('percent-text').innerText = `${percent}%`;
-            document.getElementById('progress-bar').style.width = `${percent}%`;
-            document.getElementById('tasks-count-text').innerText = `${completedCount} dari ${totalTasks} tugas selesai`;
-        }
-
-        async function toggleCheck(taskId) {
-            const task = tasks.find(t => String(t.id) === String(taskId));
-            if (!task) return;
-            if (!progressData[selectedDay]) progressData[selectedDay] = {};
-            const current = progressData[selectedDay][taskId] || 0;
-            const newVal = (current >= task.target) ? 0 : task.target;
-            progressData[selectedDay][taskId] = newVal;
-            renderTodoList();
-            if (currentUser) await db.from('tasks').update({ current: newVal }).eq('id', taskId);
-        }
-
-        async function incrementTask(taskId, target) {
-            if (!progressData[selectedDay]) progressData[selectedDay] = {};
-            const current = progressData[selectedDay][taskId] || 0;
-            if (current < target) {
-                const newVal = current + 1;
-                progressData[selectedDay][taskId] = newVal;
-                renderTodoList();
-                if (currentUser) await db.from('tasks').update({ current: newVal }).eq('id', taskId);
-            }
-        }
-
-        async function decrementTask(taskId) {
-            if (!progressData[selectedDay]) progressData[selectedDay] = {};
-            const current = progressData[selectedDay][taskId] || 0;
-            if (current > 0) {
-                const newVal = current - 1;
-                progressData[selectedDay][taskId] = newVal;
-                renderTodoList();
-                if (currentUser) await db.from('tasks').update({ current: newVal }).eq('id', taskId);
-            }
-        }
-
-        async function manualSetCount(taskId, currentVal, target) {
-            const val = prompt(`Masukkan progres (0 - ${target}):`, currentVal);
-            if (val !== null && !isNaN(val)) {
-                let num = parseInt(val);
-                if (num < 0) num = 0;
-                if (!progressData[selectedDay]) progressData[selectedDay] = {};
-                progressData[selectedDay][taskId] = num;
-                renderTodoList();
-                if (currentUser) await db.from('tasks').update({ current: num }).eq('id', taskId);
-            }
-        }
-
-        function openAddModal() {
-            document.getElementById('new-task-title').value = '';
-            document.getElementById('new-task-target').value = '1';
-            document.getElementById('add-modal').classList.remove('hidden');
-            document.getElementById('add-modal').classList.add('flex');
-        }
-
-        function closeAddModal() {
-            document.getElementById('add-modal').classList.add('hidden');
-            document.getElementById('add-modal').classList.remove('flex');
-        }
-
-        async function saveNewTask() {
-            const title = document.getElementById('new-task-title').value.trim();
-            const category = document.getElementById('new-task-category').value;
-            const priority = document.getElementById('new-task-priority').value;
-            const freq = document.getElementById('new-task-freq').value;
-            const target = parseInt(document.getElementById('new-task-target').value) || 1;
-            if (!title) return;
-
-            if (currentUser) {
-                const { data, error } = await db.from('tasks').insert([{
-                    user_id: currentUser.id,
-                    title, target, category, priority, current: 0, freq, freq_val: ''
-                }]).select();
-
-                if (error) {
-                    alert("Gagal menyimpan tugas ke Supabase: " + error.message);
-                } else if (data) {
-                    await fetchTasksFromSupabase();
-                }
-            }
-            closeAddModal();
-        }
-
-        function openEditModal(id) {
-            const task = tasks.find(t => String(t.id) === String(id));
-            if (!task) return;
-            document.getElementById('edit-task-id').value = task.id;
-            document.getElementById('edit-task-title').value = task.title;
-            document.getElementById('edit-task-category').value = task.category || 'Pribadi';
-            document.getElementById('edit-task-priority').value = task.priority || 'sedang';
-            document.getElementById('edit-task-target').value = task.target;
-            document.getElementById('edit-modal').classList.remove('hidden');
-            document.getElementById('edit-modal').classList.add('flex');
-        }
-
-        function closeEditModal() {
-            document.getElementById('edit-modal').classList.add('hidden');
-            document.getElementById('edit-modal').classList.remove('flex');
-        }
-
-        async function saveEditTask() {
-            const id = document.getElementById('edit-task-id').value;
-            const title = document.getElementById('edit-task-title').value.trim();
-            const category = document.getElementById('edit-task-category').value;
-            const priority = document.getElementById('edit-task-priority').value;
-            const target = parseInt(document.getElementById('edit-task-target').value) || 1;
-            if (!title) return;
-
-            if (currentUser) {
-                await db.from('tasks').update({ title, target, category, priority }).eq('id', id);
-                await fetchTasksFromSupabase();
-            }
-            closeEditModal();
-        }
-
-        async function deleteTask(taskId, taskTitle) {
-            if (confirm(`Hapus tugas "${taskTitle}"?`)) {
-                if (currentUser) {
-                    await db.from('tasks').delete().eq('id', taskId);
-                    await fetchTasksFromSupabase();
-                }
-            }
-        }
-
-        async function resetCurrentDay() {
-            if (confirm("Reset progres hari ini ke 0%?")) {
-                progressData[selectedDay] = {};
-                renderTodoList();
-                if (currentUser) await db.from('tasks').update({ current: 0 }).eq('user_id', currentUser.id);
-            }
-        }
-
-        async function resetAllData() {
-            if (confirm("PERINGATAN: Semua data dan tugas akan dihapus total!")) {
-                if (currentUser) await db.from('tasks').delete().eq('user_id', currentUser.id);
-                location.reload();
-            }
-        }
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-page').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-            ['tasks', 'calendar', 'settings'].forEach(n => {
-                const btn = document.getElementById(`nav-${n}`);
-                if (btn) {
-                    btn.className = (n === tabName) ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/3 py-1 transition' : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/3 py-1 transition';
-                }
-            });
-            if (tabName === 'tasks') renderTodoList();
-        }
-
-        window.onload = checkSession;
-    </script>
+    <!-- Panggil Skrip Javascript Modular -->
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
