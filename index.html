@@ -34,7 +34,8 @@
             <div id="auth-error" class="text-[11px] text-rose-400 text-center hidden"></div>
         </div>
     </div>
-        <!-- Main App Container -->
+
+    <!-- Main App Container -->
     <div id="main-app" class="w-full max-w-md mx-auto p-3 flex flex-col gap-3 pb-20 hidden">
         <!-- Top Bar -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex items-center justify-between">
@@ -67,7 +68,7 @@
             </div>
         </div>
 
-        <!-- Filter Bar (Kategori & Prioritas) -->
+        <!-- Filter Bar -->
         <div class="flex items-center gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800">
             <select id="filter-category" onchange="renderTodoList()" class="bg-slate-800 text-slate-300 border border-slate-700 rounded-lg px-2 py-1 text-[10px] flex-1">
                 <option value="all">Semua Kategori</option>
@@ -86,7 +87,8 @@
 
         <!-- Days Bar -->
         <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-1.5 grid grid-cols-7 gap-1" id="days-bar"></div>
-                <!-- Tab 1: Tugas -->
+
+        <!-- Tab 1: Tugas -->
         <div id="tab-tasks" class="tab-page flex flex-col gap-2">
             <div id="todo-list" class="flex flex-col gap-2"></div>
             <button onclick="openAddModal()" class="w-full bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 text-emerald-400 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm mt-1">
@@ -98,7 +100,7 @@
         <div id="tab-calendar" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
                 <label class="text-xs font-semibold text-slate-300">Pilih Tanggal Agenda</label>
-                <input type="date" id="calendar-date-picker" onchange="onCalendarDateChange()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <input type="date" id="calendar-date-picker" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
@@ -109,36 +111,7 @@
             </div>
         </div>
 
-        <!-- Tab 3: Analitik -->
-        <div id="tab-stats" class="tab-page hidden flex flex-col gap-3">
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-xs font-bold text-white">Statistik Produktivitas</h2>
-                    <select id="analytics-filter" onchange="renderStatsTab()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] text-white">
-                        <option value="daily">Harian</option>
-                        <option value="weekly">Mingguan</option>
-                        <option value="monthly">Bulanan</option>
-                        <option value="yearly">Tahunan</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
-                        <span class="text-[10px] text-slate-400">Rata-rata Selesai</span>
-                        <span id="stat-avg-completion" class="text-base font-bold text-emerald-400 mt-0.5">0%</span>
-                    </div>
-                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
-                        <span class="text-[10px] text-slate-400">Total Tugas Selesai</span>
-                        <span id="stat-total-done" class="text-base font-bold text-blue-400 mt-0.5">0</span>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <h3 class="text-xs font-semibold text-slate-300">Detail Kinerja Periode</h3>
-                <div id="stats-detail-list" class="flex flex-col gap-1.5"></div>
-            </div>
-        </div>
-
-        <!-- Tab 4: Pengaturan -->
+        <!-- Tab 3: Pengaturan -->
         <div id="tab-settings" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
                 <h2 class="text-xs font-bold text-white">Pengaturan Pengguna</h2>
@@ -150,43 +123,29 @@
                     </div>
                 </div>
                 <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
-                    <button onclick="requestNotificationPermission()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300">🔔 Aktifkan Pengingat Notifikasi</button>
                     <button onclick="handleLogout()" class="text-xs bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-lg font-semibold">Keluar (Logout)</button>
-                </div>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                <h2 class="text-xs font-bold text-white">Cadangan & Pemulihan Data</h2>
-                <div class="flex gap-2 mt-1">
-                    <button onclick="backupToInternalStorage()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center">Backup JSON</button>
-                    <label class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center cursor-pointer">
-                        Restore JSON
-                        <input type="file" accept=".json" onchange="restoreFromInternalStorage(event)" class="hidden">
-                    </label>
                 </div>
             </div>
             <div class="bg-slate-900/80 border border-rose-900/50 rounded-xl p-3 flex flex-col gap-2">
                 <h2 class="text-xs font-bold text-rose-400">Zona Bahaya</h2>
-                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data ke Default</button>
+                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data</button>
             </div>
         </div>
     </div>
-        <!-- Navigation Bar -->
+
+    <!-- Navigation Bar -->
     <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-1.5 z-40 text-[10px] hidden">
-        <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition">
+        <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/3 py-1 transition">
             <span class="text-base leading-none mb-0.5">📋</span> Tugas
         </button>
-        <button onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+        <button onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/3 py-1 transition">
             <span class="text-base leading-none mb-0.5">📅</span> Kalender
         </button>
-        <button onclick="switchTab('stats')" id="nav-stats" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
-            <span class="text-base leading-none mb-0.5">📊</span> Analitik
-        </button>
-        <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+        <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/3 py-1 transition">
             <span class="text-base leading-none mb-0.5">⚙️</span> Pengaturan
         </button>
     </nav>
-
-    <!-- Modal Tambah Tugas -->
+        <!-- Modal Tambah Tugas -->
     <div id="add-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
             <h3 class="text-xs font-bold text-white">Tambah Tugas Baru</h3>
@@ -214,17 +173,15 @@
                 </div>
             </div>
             <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Target Harian (Jumlah)</label>
+                <label class="text-[11px] text-slate-400">Target Harian</label>
                 <input type="number" id="new-task-target" min="1" value="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
             <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Frekuensi Tugas</label>
-                <select id="new-task-freq" onchange="handleFreqChange('new')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <label class="text-[11px] text-slate-400">Frekuensi</label>
+                <select id="new-task-freq" onchange="handleFreqChange('new')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
                     <option value="daily">Setiap Hari</option>
-                    <option value="weekly">Mingguan (Hari Tertentu)</option>
-                    <option value="monthly">Bulanan (Tanggal Tertentu)</option>
-                    <option value="specific_date">Tanggal Spesifik</option>
-                    <option value="custom_day">Kustom Hari</option>
+                    <option value="weekly">Mingguan</option>
+                    <option value="monthly">Bulanan</option>
                 </select>
             </div>
             <div id="new-freq-extra" class="hidden flex flex-col gap-1"></div>
@@ -267,17 +224,6 @@
                 <label class="text-[11px] text-slate-400">Target Harian</label>
                 <input type="number" id="edit-task-target" min="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
-            <div class="flex flex-col gap-1">
-                <label class="text-[11px] text-slate-400">Frekuensi</label>
-                <select id="edit-task-freq" onchange="handleFreqChange('edit')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-                    <option value="daily">Setiap Hari</option>
-                    <option value="weekly">Mingguan</option>
-                    <option value="monthly">Bulanan</option>
-                    <option value="specific_date">Tanggal Spesifik</option>
-                    <option value="custom_day">Kustom Hari</option>
-                </select>
-            </div>
-            <div id="edit-freq-extra" class="hidden flex flex-col gap-1"></div>
             <div class="flex gap-2 mt-1">
                 <button onclick="closeEditModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
                 <button onclick="saveEditTask()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Simpan</button>
@@ -376,15 +322,14 @@
             document.getElementById('bottom-nav').classList.remove('hidden');
             initApp();
         }
-                    async function initApp() {
+
+        async function initApp() {
             selectedDay = getTodayKey();
             updateUserInfo();
             updateCurrentDateDisplay();
             calculateDayOfYear();
             renderDaysBar();
             switchTab('tasks');
-            const cp = document.getElementById('calendar-date-picker');
-            if (cp) cp.value = getTodayDateString();
             
             await fetchTasksFromSupabase();
             setupRealtimeSync();
@@ -397,23 +342,26 @@
                 tasks = data.map(t => ({
                     id: t.id,
                     title: t.title,
-                    target: t.target,
+                    target: t.target || 1,
+                    current: t.current || 0,
                     category: t.category || 'Pribadi',
                     priority: t.priority || 'sedang',
                     freq: t.freq || 'daily',
                     freqVal: t.freq_val || ''
                 }));
+
+                if (!progressData[selectedDay]) progressData[selectedDay] = {};
+                tasks.forEach(t => {
+                    progressData[selectedDay][t.id] = t.current;
+                });
             }
-            const localProgress = localStorage.getItem('daylido_progress');
-            if (localProgress) progressData = JSON.parse(localProgress);
-            
-            changeDay(selectedDay);
+            renderTodoList();
         }
 
         function setupRealtimeSync() {
             if (!currentUser) return;
             db.channel('public:tasks')
-              .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${currentUser.id}` }, payload => {
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${currentUser.id}` }, () => {
                   fetchTasksFromSupabase();
               })
               .subscribe();
@@ -458,7 +406,8 @@
             const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
             document.getElementById('day-of-year-text').innerText = `Hari ke-${dayOfYear} dari 365`;
         }
-                    function renderDaysBar() {
+
+        function renderDaysBar() {
             const container = document.getElementById('days-bar');
             container.innerHTML = '';
             const todayKey = getTodayKey();
@@ -481,94 +430,18 @@
             renderTodoList();
         }
 
-        function isTaskActiveForDate(task, dateStr) {
-            if (!task.freq || task.freq === 'daily') return true;
-            const targetDate = new Date(dateStr);
-            const dayIndex = targetDate.getDay();
-            if (task.freq === 'weekly') return parseInt(task.freqVal) === dayIndex;
-            if (task.freq === 'custom_day') return (task.freqVal ? task.freqVal.toString().split(',').map(Number) : []).includes(dayIndex);
-            if (task.freq === 'monthly') return targetDate.getDate() == parseInt(task.freqVal || 1);
-            if (task.freq === 'specific_date') return task.freqVal === dateStr;
-            return true;
-        }
-
-        function isTaskActiveForSelectedDay(task) {
-            const dayObj = DAYS.find(d => d.key === selectedDay);
-            if (!dayObj) return true;
-            const dayIndex = dayObj.index;
-            if (!task.freq || task.freq === 'daily') return true;
-            if (task.freq === 'weekly') return parseInt(task.freqVal) === dayIndex;
-            if (task.freq === 'custom_day') return (task.freqVal ? task.freqVal.toString().split(',').map(Number) : []).includes(dayIndex);
-            if (task.freq === 'monthly') return new Date().getDate() == parseInt(task.freqVal || 1);
-            if (task.freq === 'specific_date') return task.freqVal === getTodayDateString();
-            return true;
-        }
-
-        function handleFreqChange(type) {
-            const selectEl = document.getElementById(`${type}-task-freq`);
-            const extraEl = document.getElementById(`${type}-freq-extra`);
-            const val = selectEl.value;
-            extraEl.innerHTML = '';
-            extraEl.classList.add('hidden');
-            if (val === 'weekly') {
-                extraEl.classList.remove('hidden');
-                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Pilih Hari</label><select id="${type}-freq-val" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"><option value="1">Senin</option><option value="2">Selasa</option><option value="3">Rabu</option><option value="4">Kamis</option><option value="5">Jumat</option><option value="6">Sabtu</option><option value="0">Minggu</option></select>`;
-            } else if (val === 'monthly') {
-                extraEl.classList.remove('hidden');
-                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Tanggal (1-31)</label><input type="number" id="${type}-freq-val" min="1" max="31" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">`;
-            } else if (val === 'specific_date') {
-                extraEl.classList.remove('hidden');
-                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Tanggal</label><input type="date" id="${type}-freq-val" value="${getTodayDateString()}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">`;
-            } else if (val === 'custom_day') {
-                extraEl.classList.remove('hidden');
-                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Hari Aktif</label><div class="grid grid-cols-4 gap-1 text-[10px]" id="${type}-custom-days-container"><label><input type="checkbox" value="1" checked> Sen</label><label><input type="checkbox" value="2"> Sel</label><label><input type="checkbox" value="3"> Rab</label><label><input type="checkbox" value="4"> Kam</label><label><input type="checkbox" value="5"> Jum</label><label><input type="checkbox" value="6"> Sab</label><label><input type="checkbox" value="0"> Min</label></div>`;
-            }
-        }
-
-        function moveTaskUp(visibleIndex) {
-            let visibleTasks = getFilteredTasks();
-            if (visibleIndex <= 0) return;
-            const currentTask = visibleTasks[visibleIndex];
-            const prevTask = visibleTasks[visibleIndex - 1];
-            const currentIndex = tasks.findIndex(t => t.id === currentTask.id);
-            const targetIndex = tasks.findIndex(t => t.id === prevTask.id);
-            if (currentIndex !== -1 && targetIndex !== -1) {
-                const temp = tasks[currentIndex];
-                tasks[currentIndex] = tasks[targetIndex];
-                tasks[targetIndex] = temp;
-                saveDataLocally();
-                renderTodoList();
-            }
-        }
-
-        function moveTaskDown(visibleIndex) {
-            let visibleTasks = getFilteredTasks();
-            if (visibleIndex >= visibleTasks.length - 1) return;
-            const currentTask = visibleTasks[visibleIndex];
-            const nextTask = visibleTasks[visibleIndex + 1];
-            const currentIndex = tasks.findIndex(t => t.id === currentTask.id);
-            const targetIndex = tasks.findIndex(t => t.id === nextTask.id);
-            if (currentIndex !== -1 && targetIndex !== -1) {
-                const temp = tasks[currentIndex];
-                tasks[currentIndex] = tasks[targetIndex];
-                tasks[targetIndex] = temp;
-                saveDataLocally();
-                renderTodoList();
-            }
-        }
-
         function getFilteredTasks() {
             const catFilter = document.getElementById('filter-category').value;
             const prioFilter = document.getElementById('filter-priority').value;
             
             return tasks.filter(t => {
-                const active = isTaskActiveForSelectedDay(t);
                 const matchCat = catFilter === 'all' || t.category === catFilter;
                 const matchPrio = prioFilter === 'all' || t.priority === prioFilter;
-                return active && matchCat && matchPrio;
+                return matchCat && matchPrio;
             });
         }
-                    function renderTodoList() {
+
+        function renderTodoList() {
             const container = document.getElementById('todo-list');
             container.innerHTML = '';
             const dayProgress = progressData[selectedDay] || {};
@@ -579,8 +452,8 @@
                 container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Tidak ada tugas sesuai filter/hari ini.</div>`;
             }
 
-            visibleTasks.forEach((task, index) => {
-                const currentVal = dayProgress[task.id] || 0;
+            visibleTasks.forEach((task) => {
+                const currentVal = dayProgress[task.id] !== undefined ? dayProgress[task.id] : (task.current || 0);
                 const isCompleted = currentVal >= task.target;
                 if (isCompleted) completedCount++;
 
@@ -590,22 +463,18 @@
                 card.className = `bg-slate-800/60 border border-slate-700/50 border-l-4 ${prioColor} rounded-xl p-2 flex items-center justify-between gap-1.5 shadow-sm transition hover:border-slate-600 ${isCompleted ? 'bg-slate-800/30' : ''}`;
                 card.innerHTML = `
                     <div class="flex items-center gap-1.5 flex-1 min-w-0">
-                        <div class="flex flex-col gap-0.5">
-                            <button onclick="moveTaskUp(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition">▲</button>
-                            <button onclick="moveTaskDown(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition">▼</button>
-                        </div>
-                        <button onclick="toggleCheck(${task.id})" class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold text-xs' : 'border-slate-600 hover:border-emerald-400'}">${isCompleted ? '✓' : ''}</button>
+                        <button onclick="toggleCheck('${task.id}')" class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold text-xs' : 'border-slate-600 hover:border-emerald-400'}">${isCompleted ? '✓' : ''}</button>
                         <div class="flex-1 min-w-0">
                             <p class="text-xs font-medium text-slate-200 truncate ${isCompleted ? 'line-through text-slate-500' : ''}">${task.title}</p>
                             <span class="text-[9px] text-slate-400 bg-slate-900/60 px-1.5 py-0.5 rounded">${task.category || 'Pribadi'}</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
-                        <button onclick="decrementTask(${task.id})" class="w-6 h-6 rounded bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs hover:bg-slate-600">-</button>
-                        <button onclick="manualSetCount(${task.id}, ${currentVal}, ${task.target})" class="bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-300 hover:border-emerald-500">${task.target === 1 ? (isCompleted ? 'Selesai' : '0/1') : `${currentVal}/${task.target}`}</button>
-                        <button onclick="incrementTask(${task.id}, ${task.target})" class="w-6 h-6 rounded bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs hover:bg-emerald-500 hover:text-white">+</button>
-                        <button onclick="openEditModal(${task.id})" class="p-1 text-slate-500 hover:text-slate-300 text-xs">✏️</button>
-                        <button onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" class="p-1 text-slate-500 hover:text-rose-400 text-xs">🗑️</button>
+                        <button onclick="decrementTask('${task.id}')" class="w-6 h-6 rounded bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs hover:bg-slate-600">-</button>
+                        <button onclick="manualSetCount('${task.id}', ${currentVal}, ${task.target})" class="bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-300 hover:border-emerald-500">${task.target === 1 ? (isCompleted ? 'Selesai' : '0/1') : `${currentVal}/${task.target}`}</button>
+                        <button onclick="incrementTask('${task.id}', ${task.target})" class="w-6 h-6 rounded bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs hover:bg-emerald-500 hover:text-white">+</button>
+                        <button onclick="openEditModal('${task.id}')" class="p-1 text-slate-500 hover:text-slate-300 text-xs">✏️</button>
+                        <button onclick="deleteTask('${task.id}', '${task.title.replace(/'/g, "\\'")}')" class="p-1 text-slate-500 hover:text-rose-400 text-xs">🗑️</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -618,47 +487,25 @@
             document.getElementById('tasks-count-text').innerText = `${completedCount} dari ${totalTasks} tugas selesai`;
         }
 
-        function onCalendarDateChange() {
-            const dateVal = document.getElementById('calendar-date-picker').value;
-            const listContainer = document.getElementById('calendar-tasks-list');
-            const labelEl = document.getElementById('calendar-selected-label');
-            const countEl = document.getElementById('calendar-task-count');
-            if (!dateVal) return;
-            const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-            labelEl.innerText = `Agenda: ${formattedDate}`;
-            let matchingTasks = tasks.filter(t => isTaskActiveForDate(t, dateVal));
-            countEl.innerText = `${matchingTasks.length} Kegiatan`;
-            listContainer.innerHTML = '';
-            if (matchingTasks.length === 0) {
-                listContainer.innerHTML = `<div class="text-center py-4 text-xs text-slate-500">Tidak ada kegiatan di tanggal ini.</div>`;
-                return;
-            }
-            matchingTasks.forEach((task, idx) => {
-                const item = document.createElement('div');
-                item.className = 'bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 flex items-center justify-between text-xs text-slate-200';
-                item.innerHTML = `<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">${idx + 1}</span><span class="font-medium">${task.title}</span></div><span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Target: ${task.target}</span>`;
-                listContainer.appendChild(item);
-            });
-        }
-                    async function toggleCheck(taskId) {
-            const task = tasks.find(t => t.id === taskId);
+        async function toggleCheck(taskId) {
+            const task = tasks.find(t => String(t.id) === String(taskId));
             if (!task) return;
             if (!progressData[selectedDay]) progressData[selectedDay] = {};
             const current = progressData[selectedDay][taskId] || 0;
-            progressData[selectedDay][taskId] = (current >= task.target) ? 0 : task.target;
-            saveDataLocally();
+            const newVal = (current >= task.target) ? 0 : task.target;
+            progressData[selectedDay][taskId] = newVal;
             renderTodoList();
-            if (currentUser) await db.from('tasks').update({ current: progressData[selectedDay][taskId] }).eq('id', taskId);
+            if (currentUser) await db.from('tasks').update({ current: newVal }).eq('id', taskId);
         }
 
         async function incrementTask(taskId, target) {
             if (!progressData[selectedDay]) progressData[selectedDay] = {};
             const current = progressData[selectedDay][taskId] || 0;
             if (current < target) {
-                progressData[selectedDay][taskId] = current + 1;
-                saveDataLocally();
+                const newVal = current + 1;
+                progressData[selectedDay][taskId] = newVal;
                 renderTodoList();
-                if (currentUser) await db.from('tasks').update({ current: progressData[selectedDay][taskId] }).eq('id', taskId);
+                if (currentUser) await db.from('tasks').update({ current: newVal }).eq('id', taskId);
             }
         }
 
@@ -666,10 +513,10 @@
             if (!progressData[selectedDay]) progressData[selectedDay] = {};
             const current = progressData[selectedDay][taskId] || 0;
             if (current > 0) {
-                progressData[selectedDay][taskId] = current - 1;
-                saveDataLocally();
+                const newVal = current - 1;
+                progressData[selectedDay][taskId] = newVal;
                 renderTodoList();
-                if (currentUser) await db.from('tasks').update({ current: progressData[selectedDay][taskId] }).eq('id', taskId);
+                if (currentUser) await db.from('tasks').update({ current: newVal }).eq('id', taskId);
             }
         }
 
@@ -680,7 +527,6 @@
                 if (num < 0) num = 0;
                 if (!progressData[selectedDay]) progressData[selectedDay] = {};
                 progressData[selectedDay][taskId] = num;
-                saveDataLocally();
                 renderTodoList();
                 if (currentUser) await db.from('tasks').update({ current: num }).eq('id', taskId);
             }
@@ -689,9 +535,6 @@
         function openAddModal() {
             document.getElementById('new-task-title').value = '';
             document.getElementById('new-task-target').value = '1';
-            document.getElementById('new-task-freq').value = 'daily';
-            document.getElementById('new-freq-extra').innerHTML = '';
-            document.getElementById('new-freq-extra').classList.add('hidden');
             document.getElementById('add-modal').classList.remove('hidden');
             document.getElementById('add-modal').classList.add('flex');
         }
@@ -709,49 +552,29 @@
             const target = parseInt(document.getElementById('new-task-target').value) || 1;
             if (!title) return;
 
-            let freqVal = '';
-            if (freq === 'weekly' || freq === 'monthly' || freq === 'specific_date') {
-                const el = document.getElementById('new-freq-val');
-                freqVal = el ? el.value : '';
-            } else if (freq === 'custom_day') {
-                const checkboxes = document.querySelectorAll('#new-custom-days-container input:checked');
-                freqVal = Array.from(checkboxes).map(cb => cb.value).join(',');
-            }
-
             if (currentUser) {
                 const { data, error } = await db.from('tasks').insert([{
                     user_id: currentUser.id,
-                    title, target, category, priority, current: 0, freq, freq_val: freqVal
+                    title, target, category, priority, current: 0, freq, freq_val: ''
                 }]).select();
-                if (!error && data) {
-                    tasks.push({ id: data[0].id, title, target, category, priority, freq, freqVal });
-                }
-            } else {
-                tasks.push({ id: Date.now(), title, target, category, priority, freq, freqVal });
-            }
 
-            saveDataLocally();
-            renderTodoList();
+                if (error) {
+                    alert("Gagal menyimpan tugas ke Supabase: " + error.message);
+                } else if (data) {
+                    await fetchTasksFromSupabase();
+                }
+            }
             closeAddModal();
         }
 
         function openEditModal(id) {
-            const task = tasks.find(t => t.id === id);
+            const task = tasks.find(t => String(t.id) === String(id));
             if (!task) return;
             document.getElementById('edit-task-id').value = task.id;
             document.getElementById('edit-task-title').value = task.title;
             document.getElementById('edit-task-category').value = task.category || 'Pribadi';
             document.getElementById('edit-task-priority').value = task.priority || 'sedang';
             document.getElementById('edit-task-target').value = task.target;
-            document.getElementById('edit-task-freq').value = task.freq || 'daily';
-            handleFreqChange('edit');
-            if (task.freq === 'weekly' || task.freq === 'monthly' || task.freq === 'specific_date') {
-                const el = document.getElementById('edit-freq-val');
-                if (el) el.value = task.freqVal;
-            } else if (task.freq === 'custom_day') {
-                let activeDays = task.freqVal ? task.freqVal.toString().split(',') : [];
-                document.querySelectorAll('#edit-custom-days-container input').forEach(cb => { cb.checked = activeDays.includes(cb.value); });
-            }
             document.getElementById('edit-modal').classList.remove('hidden');
             document.getElementById('edit-modal').classList.add('flex');
         }
@@ -762,45 +585,32 @@
         }
 
         async function saveEditTask() {
-            const id = parseInt(document.getElementById('edit-task-id').value);
+            const id = document.getElementById('edit-task-id').value;
             const title = document.getElementById('edit-task-title').value.trim();
             const category = document.getElementById('edit-task-category').value;
             const priority = document.getElementById('edit-task-priority').value;
-            const freq = document.getElementById('edit-task-freq').value;
             const target = parseInt(document.getElementById('edit-task-target').value) || 1;
             if (!title) return;
 
-            let freqVal = '';
-            if (freq === 'weekly' || freq === 'monthly' || freq === 'specific_date') {
-                const el = document.getElementById('edit-freq-val');
-                freqVal = el ? el.value : '';
-            } else if (freq === 'custom_day') {
-                const checkboxes = document.querySelectorAll('#edit-custom-days-container input:checked');
-                freqVal = Array.from(checkboxes).map(cb => cb.value).join(',');
-            }
-
-            const taskIndex = tasks.findIndex(t => t.id === id);
-            if (taskIndex !== -1) {
-                tasks[taskIndex] = { id, title, target, category, priority, freq, freqVal };
-                saveDataLocally();
-                renderTodoList();
-                if (currentUser) await db.from('tasks').update({ title, target, category, priority, freq, freq_val: freqVal }).eq('id', id);
+            if (currentUser) {
+                await db.from('tasks').update({ title, target, category, priority }).eq('id', id);
+                await fetchTasksFromSupabase();
             }
             closeEditModal();
         }
 
         async function deleteTask(taskId, taskTitle) {
             if (confirm(`Hapus tugas "${taskTitle}"?`)) {
-                tasks = tasks.filter(t => t.id !== taskId);
-                saveDataLocally();
-                renderTodoList();
-                if (currentUser) await db.from('tasks').delete().eq('id', taskId);
+                if (currentUser) {
+                    await db.from('tasks').delete().eq('id', taskId);
+                    await fetchTasksFromSupabase();
+                }
             }
-            }
-                    async function resetCurrentDay() {
+        }
+
+        async function resetCurrentDay() {
             if (confirm("Reset progres hari ini ke 0%?")) {
                 progressData[selectedDay] = {};
-                saveDataLocally();
                 renderTodoList();
                 if (currentUser) await db.from('tasks').update({ current: 0 }).eq('user_id', currentUser.id);
             }
@@ -808,109 +618,21 @@
 
         async function resetAllData() {
             if (confirm("PERINGATAN: Semua data dan tugas akan dihapus total!")) {
-                if (confirm("Yakin ingin mengembalikan ke pengaturan awal?")) {
-                    localStorage.clear();
-                    if (currentUser) await db.from('tasks').delete().eq('user_id', currentUser.id);
-                    location.reload();
-                }
+                if (currentUser) await db.from('tasks').delete().eq('user_id', currentUser.id);
+                location.reload();
             }
-        }
-
-        function requestNotificationPermission() {
-            if ('Notification' in window) {
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        alert("Pengingat notifikasi telah diaktifkan!");
-                        new Notification("DayliDo Pro", { body: "Pengingat tugas aktif!" });
-                    }
-                });
-            } else {
-                alert("Browser tidak mendukung notifikasi.");
-            }
-        }
-
-        function backupToInternalStorage() {
-            const backupData = { user: userName, tasks: tasks, progress: progressData, backupTime: new Date().toISOString() };
-            try {
-                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `DayliDo_Backup_${getTodayDateString()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-                alert("Backup berhasil diunduh!");
-            } catch (err) {
-                alert("Gagal backup: " + err.message);
-            }
-        }
-
-        function restoreFromInternalStorage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const content = JSON.parse(e.target.result);
-                    if (content.tasks && content.progress) {
-                        tasks = content.tasks;
-                        progressData = content.progress;
-                        if (content.user) { userName = content.user; localStorage.setItem('daylido_username', userName); }
-                        saveDataLocally();
-                        updateUserInfo();
-                        renderTodoList();
-                        
-                        if (currentUser) {
-                            for (const task of tasks) {
-                                await db.from('tasks').upsert({ id: task.id, user_id: currentUser.id, title: task.title, target: task.target, category: task.category, priority: task.priority, current: 0, freq: task.freq, freq_val: task.freqVal });
-                            }
-                        }
-                        alert("Data berhasil dipulihkan!");
-                    } else { alert("Format file salah."); }
-                } catch (err) { alert("Gagal membaca file."); }
-                event.target.value = '';
-            };
-            reader.readAsText(file);
         }
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-page').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-            ['tasks', 'calendar', 'stats', 'settings'].forEach(n => {
+            ['tasks', 'calendar', 'settings'].forEach(n => {
                 const btn = document.getElementById(`nav-${n}`);
-                btn.className = (n === tabName) ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition' : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition';
+                if (btn) {
+                    btn.className = (n === tabName) ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/3 py-1 transition' : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/3 py-1 transition';
+                }
             });
             if (tabName === 'tasks') renderTodoList();
-            if (tabName === 'calendar') onCalendarDateChange();
-            if (tabName === 'stats') renderStatsTab();
-        }
-
-        function renderStatsTab() {
-            const filter = document.getElementById('analytics-filter').value;
-            const container = document.getElementById('stats-detail-list');
-            container.innerHTML = '';
-            let totalDoneAll = 0, totalPossibleAll = 0;
-            let periods = filter === 'daily' ? DAYS.map(d => ({ label: d.full, key: d.key })) : [{ label: 'Periode Ini', key: selectedDay }];
-            periods.forEach(p => {
-                const dayProg = progressData[p.key] || {};
-                let done = 0;
-                tasks.forEach(t => { if ((dayProg[t.id] || 0) >= t.target) done++; });
-                totalDoneAll += done;
-                totalPossibleAll += tasks.length;
-                const pct = tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100);
-                const row = document.createElement('div');
-                row.className = 'flex items-center justify-between text-xs py-1 border-b border-slate-700/40 last:border-0';
-                row.innerHTML = `<span class="text-slate-300 font-medium">${p.label}</span><div class="flex items-center gap-2"><div class="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${pct}%"></div></div><span class="text-emerald-400 font-mono text-[11px] font-bold">${pct}%</span></div>`;
-                container.appendChild(row);
-            });
-            const overallPct = totalPossibleAll === 0 ? 0 : Math.round((totalDoneAll / Math.max(totalPossibleAll, 1)) * 100);
-            document.getElementById('stat-avg-completion').innerText = `${overallPct}%`;
-            document.getElementById('stat-total-done').innerText = totalDoneAll;
-        }
-
-        function saveDataLocally() {
-            localStorage.setItem('daylido_progress', JSON.stringify(progressData));
         }
 
         window.onload = checkSession;
