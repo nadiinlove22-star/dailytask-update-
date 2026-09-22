@@ -71,7 +71,7 @@ function saveEditTask() {
 
 function deleteTask(taskId, taskTitle) {
     const dateStr = getSelectedDateString();
-    if (confirm(`Hapus "${taskTitle}" khusus untuk tanggal ini? (Riwayat hari lain tidak terhapus)`)) {
+    if (confirm(`Hapus "${taskTitle}" khusus untuk tanggal ini?`)) {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
             if (!task.deletedDates) task.deletedDates = [];
