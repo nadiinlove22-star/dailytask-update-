@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DailyTask</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #0b1329; color: #ffffff; padding: 12px; max-width: 480px; margin: 0 auto; }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .top-bar h2 { font-size: 18px; font-weight: 700; }
+        
+        .profile-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .user-greeting { font-size: 15px; font-weight: 600; }
+        .user-date { font-size: 11px; color: #64748b; margin-top: 2px; }
+        .day-tag { background: #131d35; border: 1px solid #1e293b; padding: 4px 10px; border-radius: 20px; font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 6px; }
+        .avatar { width: 22px; height: 22px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #000; }
+        
+        .prod-card { background: #131d35; border: 1px solid #1e293b; border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; }
+        .prod-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #34d399; margin-bottom: 8px; }
+        .progress-bar-bg { background: #1e293b; height: 6px; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+        .progress-bar-fill { background: #10b981; height: 100%; width: 0%; border-radius: 10px; transition: width 0.3s ease; }
+        .prod-sub { display: flex; justify-content: space-between; font-size: 10px; color: #64748b; }
+        .reset-link { color: #64748b; text-decoration: underline; cursor: pointer; }
+        
+        .days-nav { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .day-btn { flex: 1; text-align: center; padding: 7px 0; font-size: 11px; color: #64748b; border-radius: 8px; margin: 0 2px; cursor: pointer; }
+        .day-btn.active { background: #131d35; border: 1px solid #10b981; color: #10b981; font-weight: 600; }
+        
+        .task-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .task-item { background: #131d35; border: 1px solid #1e293b; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; }
+        .task-left { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .check-circle { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #334155; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; }
+        .check-circle.completed { background: #10b981; border-color: #10b981; color: #000; }
+        .task-title { font-size: 12px; font-weight: 500; color: #e2e8f0; }
+        .task-title.completed { text-decoration: line-through; color: #64748b; }
+        
+        .task-right { display: flex; align-items: center; gap: 6px; }
+        .counter-box { background: #1e293b; border-radius: 6px; display: flex; align-items: center; padding: 2px 6px; font-size: 11px; color: #94a3b8; gap: 8px; }
+        .btn-act { background: transparent; border: none; color: #94a3b8; font-size: 12px; cursor: pointer; padding: 2px 4px; }
+        .btn-plus { background: #064e3b; color: #34d399; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
+        .btn-icon { background: transparent; border: none; font-size: 12px; cursor: pointer; padding: 2px; }
+        
+        .add-btn { width: 100%; background: #131d35; border: 1px dashed #10b981; color: #10b981; padding: 12px; border-radius: 10px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <h2>DailyTask</h2>
+        <span style="font-size:16px;">📋</span>
+    </div>
+
+    <div class="profile-card">
+        <div>
+            <div class="user-greeting">Hey, DK! ✏️</div>
+            <div class="user-date">Rabu, 23 Sep 2026</div>
+        </div>
+        <div class="day-tag">
+            <span>Hari ke-266 dari 365</span>
+            <div class="avatar">DK</div>
+        </div>
+    </div>
+
+    <div class="prod-card">
+        <div class="prod-header">
+            <span>PRODUKTIVITAS RABU</span>
+            <span id="percentText">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="prod-sub">
+            <span id="summaryText">0 dari 0 tugas selesai</span>
+            <span class="reset-link" onclick="resetDay()">Reset Hari Ini</span>
+        </div>
+    </div>
+
+    <div class="days-nav">
+        <div class="day-btn">Sen</div>
+        <div class="day-btn">Sel</div>
+        <div class="day-btn active">Rab</div>
+        <div class="day-btn">Kam</div>
+        <div class="day-btn">Jum</div>
+        <div class="day-btn">Sab</div>
+        <div class="day-btn">Min</div>
+    </div>
+
+    <div class="task-list" id="taskList"></div>
+
+    <div class="add-btn" onclick="addNewTask()">
+        + Tambah Tugas Baru
+    </div>
+
+    <script>
+        // MASUKKAN URL & KEY SUPABASE KAMU DI SINI
+        const SUPABASE_URL = "https://wkjxohnhhgenfvxiorkh.supabase.co"; // Tempel Project URL
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndranhvaG5oaGdlbmZ2eGlvcmtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDI4MTgsImV4cCI6MjEwNTY3ODgxOH0.j5oNNjLnnmM0e-ltWftL09R9rMKaIQ6dyliE_aytTc8";              // Tempel anonymous API key
+        
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let tasksData = [];
+
+        async function fetchTasks() {
+            const { data, error } = await db.from('tasks').select('*').order('id', { ascending: true });
+            if (!error && data) {
+                tasksData = data;
+                renderUI();
+            }
+        }
+
+        function renderUI() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+
+            let totalTarget = 0;
+            let totalDone = 0;
+            let completedTasksCount = 0;
+
+            tasksData.forEach(t => {
+                totalTarget += t.target;
+                totalDone += Math.min(t.current, t.target);
+                const isDone = t.current >= t.target;
+                if (isDone) completedTasksCount++;
+
+                const item = document.createElement('div');
+                item.className = 'task-item';
+                item.innerHTML = `
+                    <div class="task-left" onclick="toggleTask(${t.id}, ${isDone})">
+                        <div class="check-circle ${isDone ? 'completed' : ''}">${isDone ? '✓' : ''}</div>
+                        <div class="task-title ${isDone ? 'completed' : ''}">${t.title}</div>
+                    </div>
+                    <div class="task-right">
+                        <div class="counter-box">
+                            <button class="btn-act" onclick="updateCounter(${t.id}, ${t.current - 1})">-</button>
+                            <span>${t.current}/${t.target}</span>
+                            <button class="btn-act btn-plus" onclick="updateCounter(${t.id}, ${t.current + 1})">+</button>
+                        </div>
+                        <button class="btn-icon" onclick="editTask(${t.id}, '${t.title}', ${t.target})">✏️</button>
+                        <button class="btn-icon" onclick="deleteTask(${t.id})">🗑️</button>
+                    </div>
+                `;
+                taskList.appendChild(item);
+            });
+
+            const percent = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
+            document.getElementById('percentText').innerText = `${percent}%`;
+            document.getElementById('progressFill').style.width = `${percent}%`;
+            document.getElementById('summaryText').innerText = `${completedTasksCount} dari ${tasksData.length} tugas selesai`;
+        }
+
+        async function updateCounter(id, newCount) {
+            if (newCount < 0) return;
+            const t = tasksData.find(item => item.id === id);
+            if (t) { t.current = newCount; renderUI(); }
+            await db.from('tasks').update({ current: newCount }).eq('id', id);
+        }
+
+        async function toggleTask(id, isDone) {
+            const t = tasksData.find(item => item.id === id);
+            if (t) {
+                t.current = isDone ? 0 : t.target;
+                renderUI();
+                await db.from('tasks').update({ current: t.current }).eq('id', id);
+            }
+        }
+
+        async function addNewTask() {
+            const title = prompt("Nama tugas baru:");
+            if (!title) return;
+            const target = prompt("Target harian:", "1");
+            if (!target) return;
+
+            const { data, error } = await db.from('tasks').insert([{ title, target: parseInt(target), current: 0 }]).select();
+            if (!error && data) { tasksData.push(data[0]); renderUI(); }
+        }
+
+        async function editTask(id, oldTitle, oldTarget) {
+            const title = prompt("Edit nama tugas:", oldTitle);
+            if (!title) return;
+            const target = prompt("Edit target harian:", oldTarget);
+            if (!target) return;
+
+            const t = tasksData.find(item => item.id === id);
+            if (t) {
+                t.title = title;
+                t.target = parseInt(target);
+                renderUI();
+                await db.from('tasks').update({ title, target: parseInt(target) }).eq('id', id);
+            }
+        }
+
+        async function deleteTask(id) {
+            if (confirm("Hapus tugas ini?")) {
+                tasksData = tasksData.filter(item => item.id !== id);
+                renderUI();
+                await db.from('tasks').delete().eq('id', id);
+            }
+        }
+
+        async function resetDay() {
+            tasksData.forEach(t => t.current = 0);
+            renderUI();
+            await db.from('tasks').update({ current: 0 }).gt('id', 0);
+        }
+
+        fetchTasks();
+    </script>
+</body>
+</html>
