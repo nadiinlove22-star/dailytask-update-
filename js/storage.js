@@ -2,7 +2,9 @@ let userName = localStorage.getItem('daylido_username') || 'DK';
 let tasks = JSON.parse(localStorage.getItem('daylido_tasks')) || [];
 let progressData = JSON.parse(localStorage.getItem('daylido_progress')) || {};
 
+// Auto-save tiap kali ada perubahan data
 function saveData() {
+    localStorage.setItem('daylido_username', userName);
     localStorage.setItem('daylido_tasks', JSON.stringify(tasks));
     localStorage.setItem('daylido_progress', JSON.stringify(progressData));
 }
@@ -18,7 +20,6 @@ function backupToInternalStorage() {
         document.body.appendChild(a);
         a.click();
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-        alert("Backup berhasil diunduh!");
     } catch (err) {
         alert("Gagal backup: " + err.message);
     }
@@ -34,12 +35,12 @@ function restoreFromInternalStorage(event) {
             if (content.tasks && content.progress) {
                 tasks = content.tasks;
                 progressData = content.progress;
-                if (content.user) { userName = content.user; localStorage.setItem('daylido_username', userName); }
+                if (content.user) { userName = content.user; }
                 saveData();
                 updateUserInfo();
                 renderTodoList();
-                alert("Data berhasil dipulihkan!");
-            } else { alert("Format file salah."); }
+                alert("Data & profil berhasil dipulihkan!");
+            } else { alert("Format file JSON tidak valid."); }
         } catch (err) { alert("Gagal membaca file."); }
         event.target.value = '';
     };
