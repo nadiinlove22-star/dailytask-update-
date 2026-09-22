@@ -14,33 +14,63 @@ function getSelectedDateString() {
 }
 
 function updateUserInfo() {
-    document.getElementById('user-name-display').innerText = `Hey, ${userName}!`;
-    document.getElementById('user-avatar').innerText = userName.charAt(0).toUpperCase();
-    const settingsInput = document.getElementById('settings-user-name');
-    if (settingsInput) settingsInput.value = userName;
+    const nameDisplay = userName ? `Hey, ${userName}!` : 'Hey, Guest!';
+    const initial = userName ? userName.charAt(0).toUpperCase() : '?';
+    
+    const userDisplayEl = document.getElementById('user-name-display');
+    if (userDisplayEl) userDisplayEl.innerText = nameDisplay;
+    
+    const avatarEl = document.getElementById('user-avatar');
+    if (avatarEl) avatarEl.innerText = initial;
+    
+    const settingsDisplay = document.getElementById('settings-user-name-display');
+    if (settingsDisplay) settingsDisplay.innerText = userName ? `Akun: ${userName}` : 'Belum Terhubung Akun';
 }
 
-function editUserName() {
-    const newName = prompt('Masukkan nama pengguna / panggilannya:', userName);
-    if (newName && newName.trim() !== '') {
-        userName = newName.trim();
-        saveData();
-        updateUserInfo();
+function openLoginModal() {
+    const inputEl = document.getElementById('login-username-input');
+    if (inputEl) inputEl.value = userName || '';
+    
+    const modal = document.getElementById('login-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
     }
 }
 
-function saveNameFromSettings() {
-    const newName = document.getElementById('settings-user-name').value.trim();
-    if (newName) {
-        userName = newName;
-        saveData();
-        updateUserInfo();
-        alert('Nama pengguna berhasil diperbarui!');
+function closeLoginModal() {
+    const modal = document.getElementById('login-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
     }
+}
+
+// PROSES LOGIN / GANTI AKUN INSTAN
+async function submitLogin() {
+    const inputEl = document.getElementById('login-username-input');
+    const inputVal = inputEl ? inputEl.value.trim() : '';
+    
+    if (!inputVal) {
+        alert("Masukkan username terlebih dahulu.");
+        return;
+    }
+
+    userName = inputVal;
+    localStorage.setItem('daylido_username', userName);
+    closeLoginModal();
+    
+    // Muat ulang data dari Supabase untuk username yang baru dimasukkan
+    await loadDataFromSupabase(() => {
+        updateUserInfo();
+        renderDaysBar();
+        renderTodoList();
+    });
 }
 
 function renderDaysBar() {
     const container = document.getElementById('days-bar');
+    if (!container) return;
     container.innerHTML = '';
     const todayKey = getTodayKey();
     DAYS.forEach(day => {
@@ -57,13 +87,15 @@ function renderDaysBar() {
 function changeDay(dayKey) {
     selectedDay = dayKey;
     const dayObj = DAYS.find(d => d.key === dayKey);
-    if (dayObj) document.getElementById('day-title').innerText = `PRODUKTIVITAS ${dayObj.full}`;
+    const titleEl = document.getElementById('day-title');
+    if (dayObj && titleEl) titleEl.innerText = `PRODUKTIVITAS ${dayObj.full}`;
     renderDaysBar();
     renderTodoList();
 }
 
 function renderTodoList() {
     const container = document.getElementById('todo-list');
+    if (!container) return;
     container.innerHTML = '';
     
     const dateStr = getSelectedDateString();
@@ -104,9 +136,15 @@ function renderTodoList() {
 
     const totalTasks = visibleTasks.length;
     const percent = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
-    document.getElementById('percent-text').innerText = `${percent}%`;
-    document.getElementById('progress-bar').style.width = `${percent}%`;
-    document.getElementById('tasks-count-text').innerText = `${completedCount} dari ${totalTasks} tugas selesai`;
+    
+    const pctEl = document.getElementById('percent-text');
+    if (pctEl) pctEl.innerText = `${percent}%`;
+    
+    const barEl = document.getElementById('progress-bar');
+    if (barEl) barEl.style.width = `${percent}%`;
+    
+    const countEl = document.getElementById('tasks-count-text');
+    if (countEl) countEl.innerText = `${completedCount} dari ${totalTasks} tugas selesai`;
 }
 
 function toggleCheck(taskId) {
@@ -151,7 +189,6 @@ function manualSetCount(taskId, currentVal, target) {
     }
 }
 
-// KHUSUS RESET: Hanya menghapus progres tanggal terpilih, DAFTAR TUGAS TETAP ADA
 function resetCurrentDay() {
     const dateStr = getSelectedDateString();
     if (confirm("Reset progres hari ini saja? (Tugas tidak akan terhapus)")) {
