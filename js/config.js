@@ -1,22 +1,10 @@
-// Konfigurasi Supabase API
 const SUPABASE_URL = 'https://wkjxohnhhgenfvxiorkh.supabase.co';
 const SUPABASE_ANON_KEY = 'EyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndranhvaG5oaGdlbmZ2eGlvcmtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDI4MTgsImV4cCI6MjEwNTY3ODgxOH0.j5oNNjLnnmM0e-ltWftL09R9rMKaIQ6dyliE_aytTc8';
 
-// Inisialisasi Klien Supabase
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Config Hari & PWA
-const manifestData = {
-    "name": "DayliDo - Daily Todo List",
-    "short_name": "DayliDo",
-    "start_url": ".",
-    "display": "standalone",
-    "background_color": "#0b1329",
-    "theme_color": "#0b1329"
-};
-const manifestString = JSON.stringify(manifestData);
-const manifestBlob = new Blob([manifestString], {type: 'application/json'});
-document.getElementById('manifest-placeholder').setAttribute('href', URL.createObjectURL(manifestBlob));
+let supabaseClient = null;
+if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 const DAYS = [
     { key: 'Sen', full: 'SENIN', index: 1 },
