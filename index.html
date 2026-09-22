@@ -2,210 +2,918 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DailyTask</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DayliDo Pro - Task & Productivity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: #0b1329; color: #ffffff; padding: 12px; max-width: 480px; margin: 0 auto; }
-        
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .top-bar h2 { font-size: 18px; font-weight: 700; }
-        
-        .profile-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .user-greeting { font-size: 15px; font-weight: 600; }
-        .user-date { font-size: 11px; color: #64748b; margin-top: 2px; }
-        .day-tag { background: #131d35; border: 1px solid #1e293b; padding: 4px 10px; border-radius: 20px; font-size: 10px; color: #94a3b8; display: flex; align-items: center; gap: 6px; }
-        .avatar { width: 22px; height: 22px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #000; }
-        
-        .prod-card { background: #131d35; border: 1px solid #1e293b; border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; }
-        .prod-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #34d399; margin-bottom: 8px; }
-        .progress-bar-bg { background: #1e293b; height: 6px; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
-        .progress-bar-fill { background: #10b981; height: 100%; width: 0%; border-radius: 10px; transition: width 0.3s ease; }
-        .prod-sub { display: flex; justify-content: space-between; font-size: 10px; color: #64748b; }
-        .reset-link { color: #64748b; text-decoration: underline; cursor: pointer; }
-        
-        .days-nav { display: flex; justify-content: space-between; margin-bottom: 15px; }
-        .day-btn { flex: 1; text-align: center; padding: 7px 0; font-size: 11px; color: #64748b; border-radius: 8px; margin: 0 2px; cursor: pointer; }
-        .day-btn.active { background: #131d35; border: 1px solid #10b981; color: #10b981; font-weight: 600; }
-        
-        .task-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        .task-item { background: #131d35; border: 1px solid #1e293b; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; }
-        .task-left { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .check-circle { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #334155; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; }
-        .check-circle.completed { background: #10b981; border-color: #10b981; color: #000; }
-        .task-title { font-size: 12px; font-weight: 500; color: #e2e8f0; }
-        .task-title.completed { text-decoration: line-through; color: #64748b; }
-        
-        .task-right { display: flex; align-items: center; gap: 6px; }
-        .counter-box { background: #1e293b; border-radius: 6px; display: flex; align-items: center; padding: 2px 6px; font-size: 11px; color: #94a3b8; gap: 8px; }
-        .btn-act { background: transparent; border: none; color: #94a3b8; font-size: 12px; cursor: pointer; padding: 2px 4px; }
-        .btn-plus { background: #064e3b; color: #34d399; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
-        .btn-icon { background: transparent; border: none; font-size: 12px; cursor: pointer; padding: 2px; }
-        
-        .add-btn { width: 100%; background: #131d35; border: 1px dashed #10b981; color: #10b981; padding: 12px; border-radius: 10px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; }
-    </style>
-</head>
-<body>
-
-    <div class="top-bar">
-        <h2>DailyTask</h2>
-        <span style="font-size:16px;">📋</span>
-    </div>
-
-    <div class="profile-card">
-        <div>
-            <div class="user-greeting">Hey, DK! ✏️</div>
-            <div class="user-date">Rabu, 23 Sep 2026</div>
-        </div>
-        <div class="day-tag">
-            <span>Hari ke-266 dari 365</span>
-            <div class="avatar">DK</div>
-        </div>
-    </div>
-
-    <div class="prod-card">
-        <div class="prod-header">
-            <span>PRODUKTIVITAS RABU</span>
-            <span id="percentText">0%</span>
-        </div>
-        <div class="progress-bar-bg">
-            <div class="progress-bar-fill" id="progressFill"></div>
-        </div>
-        <div class="prod-sub">
-            <span id="summaryText">0 dari 0 tugas selesai</span>
-            <span class="reset-link" onclick="resetDay()">Reset Hari Ini</span>
-        </div>
-    </div>
-
-    <div class="days-nav">
-        <div class="day-btn">Sen</div>
-        <div class="day-btn">Sel</div>
-        <div class="day-btn active">Rab</div>
-        <div class="day-btn">Kam</div>
-        <div class="day-btn">Jum</div>
-        <div class="day-btn">Sab</div>
-        <div class="day-btn">Min</div>
-    </div>
-
-    <div class="task-list" id="taskList"></div>
-
-    <div class="add-btn" onclick="addNewTask()">
-        + Tambah Tugas Baru
-    </div>
-
+    <link id="manifest-placeholder" rel="manifest">
+    <meta name="theme-color" content="#0b1329">
     <script>
-        // MASUKKAN URL & KEY SUPABASE KAMU DI SINI
-        const SUPABASE_URL = "https://wkjxohnhhgenfvxiorkh.supabase.co"; // Tempel Project URL
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndranhvaG5oaGdlbmZ2eGlvcmtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDI4MTgsImV4cCI6MjEwNTY3ODgxOH0.j5oNNjLnnmM0e-ltWftL09R9rMKaIQ6dyliE_aytTc8";              // Tempel anonymous API key
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+</head>
+<body class="bg-[#0b1329] dark:bg-[#0b1329] text-slate-100 font-sans select-none min-h-screen flex flex-col justify-between transition-colors duration-300" id="app-body">
+
+    <!-- Screen Auth (Login / Register) -->
+    <div id="auth-screen" class="fixed inset-0 bg-[#0b1329] z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4 shadow-2xl">
+            <div class="text-center">
+                <h1 class="text-xl font-bold text-emerald-400">DayliDo Pro</h1>
+                <p class="text-xs text-slate-400 mt-1">Masuk untuk sinkronisasi tugas di semua perangkat</p>
+            </div>
+            <div class="flex flex-col gap-2">
+                <input type="email" id="auth-email" placeholder="Email (contoh: user@gmail.com)" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <input type="password" id="auth-password" placeholder="Kata Sandi" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div class="flex flex-col gap-2 mt-1">
+                <button onclick="handleLogin()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition shadow-lg">Masuk (Login)</button>
+                <button onclick="handleRegister()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl text-xs transition">Daftar Akun Baru</button>
+            </div>
+            <div id="auth-error" class="text-[11px] text-rose-400 text-center hidden"></div>
+        </div>
+    </div>
+        <!-- Main App Container -->
+    <div id="main-app" class="w-full max-w-md mx-auto p-3 flex flex-col gap-3 pb-20 hidden">
+        <!-- Top Bar -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex items-center justify-between">
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <h1 id="user-name-display" class="text-sm font-bold text-white tracking-wide">Hey, User!</h1>
+                    <button onclick="editUserName()" class="text-xs text-amber-400 hover:text-amber-300" title="Edit Nama">✏️</button>
+                </div>
+                <p id="current-date-text" class="text-[10px] text-slate-400 mt-0.5">Rabu, 23 Sep 2026</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleDarkMode()" class="p-1.5 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 transition" title="Toggle Tema">🌙/☀️</button>
+                <div id="day-of-year-text" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">Hari ke-266</div>
+                <div id="user-avatar" class="w-8 h-8 rounded-full bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center font-bold text-emerald-400 text-xs">U</div>
+            </div>
+        </div>
+
+        <!-- Progress Bar Card -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col gap-2">
+            <div class="flex items-center justify-between text-xs">
+                <span id="day-title" class="font-bold text-emerald-400 tracking-wider text-[11px]">PRODUKTIVITAS HARI INI</span>
+                <span id="percent-text" class="font-mono font-bold text-emerald-400">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div id="progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-slate-400">
+                <span id="tasks-count-text">0 dari 0 tugas selesai</span>
+                <button onclick="resetCurrentDay()" class="hover:text-emerald-400 transition underline">Reset Hari Ini</button>
+            </div>
+        </div>
+
+        <!-- Filter Bar (Kategori & Prioritas) -->
+        <div class="flex items-center gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+            <select id="filter-category" onchange="renderTodoList()" class="bg-slate-800 text-slate-300 border border-slate-700 rounded-lg px-2 py-1 text-[10px] flex-1">
+                <option value="all">Semua Kategori</option>
+                <option value="Kerja">💼 Kerja</option>
+                <option value="Pribadi">👤 Pribadi</option>
+                <option value="Kesehatan">🏋️ Kesehatan</option>
+                <option value="Belajar">📚 Belajar</option>
+            </select>
+            <select id="filter-priority" onchange="renderTodoList()" class="bg-slate-800 text-slate-300 border border-slate-700 rounded-lg px-2 py-1 text-[10px] flex-1">
+                <option value="all">Semua Prioritas</option>
+                <option value="tinggi">🔴 Tinggi</option>
+                <option value="sedang">🟡 Sedang</option>
+                <option value="rendah">🟢 Rendah</option>
+            </select>
+        </div>
+
+        <!-- Days Bar -->
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-1.5 grid grid-cols-7 gap-1" id="days-bar"></div>
+                <!-- Tab 1: Tugas -->
+        <div id="tab-tasks" class="tab-page flex flex-col gap-2">
+            <div id="todo-list" class="flex flex-col gap-2"></div>
+            <button onclick="openAddModal()" class="w-full bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 text-emerald-400 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm mt-1">
+                + Tambah Tugas Baru
+            </button>
+        </div>
+
+        <!-- Tab 2: Kalender -->
+        <div id="tab-calendar" class="tab-page hidden flex flex-col gap-3">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <label class="text-xs font-semibold text-slate-300">Pilih Tanggal Agenda</label>
+                <input type="date" id="calendar-date-picker" onchange="onCalendarDateChange()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span id="calendar-selected-label" class="text-xs font-semibold text-emerald-400">Agenda Kegiatan</span>
+                    <span id="calendar-task-count" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono">0 Kegiatan</span>
+                </div>
+                <div id="calendar-tasks-list" class="flex flex-col gap-1.5 mt-1"></div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Analitik -->
+        <div id="tab-stats" class="tab-page hidden flex flex-col gap-3">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xs font-bold text-white">Statistik Produktivitas</h2>
+                    <select id="analytics-filter" onchange="renderStatsTab()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] text-white">
+                        <option value="daily">Harian</option>
+                        <option value="weekly">Mingguan</option>
+                        <option value="monthly">Bulanan</option>
+                        <option value="yearly">Tahunan</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
+                        <span class="text-[10px] text-slate-400">Rata-rata Selesai</span>
+                        <span id="stat-avg-completion" class="text-base font-bold text-emerald-400 mt-0.5">0%</span>
+                    </div>
+                    <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50 flex flex-col">
+                        <span class="text-[10px] text-slate-400">Total Tugas Selesai</span>
+                        <span id="stat-total-done" class="text-base font-bold text-blue-400 mt-0.5">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <h3 class="text-xs font-semibold text-slate-300">Detail Kinerja Periode</h3>
+                <div id="stats-detail-list" class="flex flex-col gap-1.5"></div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Pengaturan -->
+        <div id="tab-settings" class="tab-page hidden flex flex-col gap-3">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
+                <h2 class="text-xs font-bold text-white">Pengaturan Pengguna</h2>
+                <div>
+                    <label class="text-[11px] text-slate-400 block mb-1">Nama Pemilik</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="settings-user-name" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <button onclick="saveNameFromSettings()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">Simpan</button>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                    <button onclick="requestNotificationPermission()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300">🔔 Aktifkan Pengingat Notifikasi</button>
+                    <button onclick="handleLogout()" class="text-xs bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-lg font-semibold">Keluar (Logout)</button>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <h2 class="text-xs font-bold text-white">Cadangan & Pemulihan Data</h2>
+                <div class="flex gap-2 mt-1">
+                    <button onclick="backupToInternalStorage()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center">Backup JSON</button>
+                    <label class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 rounded-lg text-xs transition text-center cursor-pointer">
+                        Restore JSON
+                        <input type="file" accept=".json" onchange="restoreFromInternalStorage(event)" class="hidden">
+                    </label>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-rose-900/50 rounded-xl p-3 flex flex-col gap-2">
+                <h2 class="text-xs font-bold text-rose-400">Zona Bahaya</h2>
+                <button onclick="resetAllData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-400 font-semibold py-2 rounded-lg text-xs transition">Reset Semua Data ke Default</button>
+            </div>
+        </div>
+    </div>
+        <!-- Navigation Bar -->
+    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-1.5 z-40 text-[10px] hidden">
+        <button onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition">
+            <span class="text-base leading-none mb-0.5">📋</span> Tugas
+        </button>
+        <button onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+            <span class="text-base leading-none mb-0.5">📅</span> Kalender
+        </button>
+        <button onclick="switchTab('stats')" id="nav-stats" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+            <span class="text-base leading-none mb-0.5">📊</span> Analitik
+        </button>
+        <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+            <span class="text-base leading-none mb-0.5">⚙️</span> Pengaturan
+        </button>
+    </nav>
+
+    <!-- Modal Tambah Tugas -->
+    <div id="add-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
+            <h3 class="text-xs font-bold text-white">Tambah Tugas Baru</h3>
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Nama Tugas</label>
+                <input type="text" id="new-task-title" placeholder="Contoh: Baca buku..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] text-slate-400">Kategori</label>
+                    <select id="new-task-category" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
+                        <option value="Kerja">💼 Kerja</option>
+                        <option value="Pribadi">👤 Pribadi</option>
+                        <option value="Kesehatan">🏋️ Kesehatan</option>
+                        <option value="Belajar">📚 Belajar</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] text-slate-400">Prioritas</label>
+                    <select id="new-task-priority" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
+                        <option value="sedang">🟡 Sedang</option>
+                        <option value="tinggi">🔴 Tinggi</option>
+                        <option value="rendah">🟢 Rendah</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Target Harian (Jumlah)</label>
+                <input type="number" id="new-task-target" min="1" value="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Frekuensi Tugas</label>
+                <select id="new-task-freq" onchange="handleFreqChange('new')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <option value="daily">Setiap Hari</option>
+                    <option value="weekly">Mingguan (Hari Tertentu)</option>
+                    <option value="monthly">Bulanan (Tanggal Tertentu)</option>
+                    <option value="specific_date">Tanggal Spesifik</option>
+                    <option value="custom_day">Kustom Hari</option>
+                </select>
+            </div>
+            <div id="new-freq-extra" class="hidden flex flex-col gap-1"></div>
+            <div class="flex gap-2 mt-1">
+                <button onclick="closeAddModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
+                <button onclick="saveNewTask()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Tugas -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-xs flex flex-col gap-3 shadow-xl">
+            <h3 class="text-xs font-bold text-white">Edit Tugas</h3>
+            <input type="hidden" id="edit-task-id">
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Nama Tugas</label>
+                <input type="text" id="edit-task-title" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] text-slate-400">Kategori</label>
+                    <select id="edit-task-category" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
+                        <option value="Kerja">💼 Kerja</option>
+                        <option value="Pribadi">👤 Pribadi</option>
+                        <option value="Kesehatan">🏋️ Kesehatan</option>
+                        <option value="Belajar">📚 Belajar</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] text-slate-400">Prioritas</label>
+                    <select id="edit-task-priority" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
+                        <option value="sedang">🟡 Sedang</option>
+                        <option value="tinggi">🔴 Tinggi</option>
+                        <option value="rendah">🟢 Rendah</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Target Harian</label>
+                <input type="number" id="edit-task-target" min="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Frekuensi</label>
+                <select id="edit-task-freq" onchange="handleFreqChange('edit')" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <option value="daily">Setiap Hari</option>
+                    <option value="weekly">Mingguan</option>
+                    <option value="monthly">Bulanan</option>
+                    <option value="specific_date">Tanggal Spesifik</option>
+                    <option value="custom_day">Kustom Hari</option>
+                </select>
+            </div>
+            <div id="edit-freq-extra" class="hidden flex flex-col gap-1"></div>
+            <div class="flex gap-2 mt-1">
+                <button onclick="closeEditModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
+                <button onclick="saveEditTask()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Simpan</button>
+            </div>
+        </div>
+    </div>
+        <script>
+        const SUPABASE_URL = "https://wkjxohnhhgenfvxiorkh.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndranhvaG5oaGdlbmZ2eGlvcmtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDI4MTgsImV4cCI6MjEwNTY3ODgxOH0.j5oNNjLnnmM0e-ltWftL09R9rMKaIQ6dyliE_aytTc8";
         
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        let tasksData = [];
 
-        async function fetchTasks() {
-            const { data, error } = await db.from('tasks').select('*').order('id', { ascending: true });
-            if (!error && data) {
-                tasksData = data;
-                renderUI();
+        const DAYS = [
+            { key: 'Sen', full: 'SENIN', index: 1 },
+            { key: 'Sel', full: 'SELASA', index: 2 },
+            { key: 'Rab', full: 'RABU', index: 3 },
+            { key: 'Kam', full: 'KAMIS', index: 4 },
+            { key: 'Jum', full: 'JUMAT', index: 5 },
+            { key: 'Sab', full: 'SABTU', index: 6 },
+            { key: 'Min', full: 'MINGGU', index: 0 }
+        ];
+
+        let currentUser = null;
+        let userName = localStorage.getItem('daylido_username') || 'User';
+        let tasks = [];
+        let progressData = {};
+        let selectedDay = getTodayKey();
+
+        function getTodayKey() {
+            const dayNum = new Date().getDay();
+            const found = DAYS.find(d => d.index === dayNum);
+            return found ? found.key : 'Sen';
+        }
+
+        function getTodayDateString() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+
+        async function checkSession() {
+            const { data: { session } } = await db.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                showAppUI();
+            } else {
+                showAuthUI();
             }
         }
 
-        function renderUI() {
-            const taskList = document.getElementById('taskList');
-            taskList.innerHTML = '';
+        async function handleLogin() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
+            const errEl = document.getElementById('auth-error');
+            errEl.classList.add('hidden');
 
-            let totalTarget = 0;
-            let totalDone = 0;
-            let completedTasksCount = 0;
+            const { data, error } = await db.auth.signInWithPassword({ email, password });
+            if (error) {
+                errEl.innerText = error.message;
+                errEl.classList.remove('hidden');
+            } else {
+                currentUser = data.user;
+                showAppUI();
+            }
+        }
 
-            tasksData.forEach(t => {
-                totalTarget += t.target;
-                totalDone += Math.min(t.current, t.target);
-                const isDone = t.current >= t.target;
-                if (isDone) completedTasksCount++;
+        async function handleRegister() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
+            const errEl = document.getElementById('auth-error');
+            errEl.classList.add('hidden');
 
-                const item = document.createElement('div');
-                item.className = 'task-item';
-                item.innerHTML = `
-                    <div class="task-left" onclick="toggleTask(${t.id}, ${isDone})">
-                        <div class="check-circle ${isDone ? 'completed' : ''}">${isDone ? '✓' : ''}</div>
-                        <div class="task-title ${isDone ? 'completed' : ''}">${t.title}</div>
-                    </div>
-                    <div class="task-right">
-                        <div class="counter-box">
-                            <button class="btn-act" onclick="updateCounter(${t.id}, ${t.current - 1})">-</button>
-                            <span>${t.current}/${t.target}</span>
-                            <button class="btn-act btn-plus" onclick="updateCounter(${t.id}, ${t.current + 1})">+</button>
+            const { data, error } = await db.auth.signUp({ email, password });
+            if (error) {
+                errEl.innerText = error.message;
+                errEl.classList.remove('hidden');
+            } else {
+                alert("Pendaftaran berhasil! Silakan Login.");
+            }
+        }
+
+        async function handleLogout() {
+            await db.auth.signOut();
+            currentUser = null;
+            showAuthUI();
+        }
+
+        function showAuthUI() {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('bottom-nav').classList.add('hidden');
+        }
+
+        function showAppUI() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('bottom-nav').classList.remove('hidden');
+            initApp();
+        }
+                    async function initApp() {
+            selectedDay = getTodayKey();
+            updateUserInfo();
+            updateCurrentDateDisplay();
+            calculateDayOfYear();
+            renderDaysBar();
+            switchTab('tasks');
+            const cp = document.getElementById('calendar-date-picker');
+            if (cp) cp.value = getTodayDateString();
+            
+            await fetchTasksFromSupabase();
+            setupRealtimeSync();
+        }
+
+        async function fetchTasksFromSupabase() {
+            if (!currentUser) return;
+            const { data, error } = await db.from('tasks').select('*').eq('user_id', currentUser.id).order('id', { ascending: true });
+            if (!error && data) {
+                tasks = data.map(t => ({
+                    id: t.id,
+                    title: t.title,
+                    target: t.target,
+                    category: t.category || 'Pribadi',
+                    priority: t.priority || 'sedang',
+                    freq: t.freq || 'daily',
+                    freqVal: t.freq_val || ''
+                }));
+            }
+            const localProgress = localStorage.getItem('daylido_progress');
+            if (localProgress) progressData = JSON.parse(localProgress);
+            
+            changeDay(selectedDay);
+        }
+
+        function setupRealtimeSync() {
+            if (!currentUser) return;
+            db.channel('public:tasks')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${currentUser.id}` }, payload => {
+                  fetchTasksFromSupabase();
+              })
+              .subscribe();
+        }
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        function updateUserInfo() {
+            document.getElementById('user-name-display').innerText = `Hey, ${userName}!`;
+            document.getElementById('user-avatar').innerText = userName.charAt(0).toUpperCase();
+            document.getElementById('settings-user-name').value = userName;
+        }
+
+        function editUserName() {
+            const newName = prompt('Masukkan nama pemilik tugas:', userName);
+            if (newName && newName.trim() !== '') {
+                userName = newName.trim();
+                localStorage.setItem('daylido_username', userName);
+                updateUserInfo();
+            }
+        }
+
+        function saveNameFromSettings() {
+            const newName = document.getElementById('settings-user-name').value.trim();
+            if (newName) {
+                userName = newName;
+                localStorage.setItem('daylido_username', userName);
+                updateUserInfo();
+            }
+        }
+
+        function updateCurrentDateDisplay() {
+            const now = new Date();
+            document.getElementById('current-date-text').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function calculateDayOfYear() {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 0);
+            const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+            document.getElementById('day-of-year-text').innerText = `Hari ke-${dayOfYear} dari 365`;
+        }
+                    function renderDaysBar() {
+            const container = document.getElementById('days-bar');
+            container.innerHTML = '';
+            const todayKey = getTodayKey();
+            DAYS.forEach(day => {
+                const isActive = day.key === selectedDay;
+                const isToday = day.key === todayKey;
+                const btn = document.createElement('button');
+                btn.onclick = () => changeDay(day.key);
+                btn.className = `flex flex-col items-center justify-center py-1.5 rounded-lg text-[10px] font-semibold transition ${isActive ? 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-400 shadow' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`;
+                btn.innerHTML = `<div class="w-2 h-2 rounded-full mb-1 ${isActive ? 'bg-emerald-400' : (isToday ? 'bg-blue-400' : 'bg-slate-700')}"></div><span>${day.key}</span>`;
+                container.appendChild(btn);
+            });
+        }
+
+        function changeDay(dayKey) {
+            selectedDay = dayKey;
+            const dayObj = DAYS.find(d => d.key === dayKey);
+            if (dayObj) document.getElementById('day-title').innerText = `PRODUKTIVITAS ${dayObj.full}`;
+            renderDaysBar();
+            renderTodoList();
+        }
+
+        function isTaskActiveForDate(task, dateStr) {
+            if (!task.freq || task.freq === 'daily') return true;
+            const targetDate = new Date(dateStr);
+            const dayIndex = targetDate.getDay();
+            if (task.freq === 'weekly') return parseInt(task.freqVal) === dayIndex;
+            if (task.freq === 'custom_day') return (task.freqVal ? task.freqVal.toString().split(',').map(Number) : []).includes(dayIndex);
+            if (task.freq === 'monthly') return targetDate.getDate() == parseInt(task.freqVal || 1);
+            if (task.freq === 'specific_date') return task.freqVal === dateStr;
+            return true;
+        }
+
+        function isTaskActiveForSelectedDay(task) {
+            const dayObj = DAYS.find(d => d.key === selectedDay);
+            if (!dayObj) return true;
+            const dayIndex = dayObj.index;
+            if (!task.freq || task.freq === 'daily') return true;
+            if (task.freq === 'weekly') return parseInt(task.freqVal) === dayIndex;
+            if (task.freq === 'custom_day') return (task.freqVal ? task.freqVal.toString().split(',').map(Number) : []).includes(dayIndex);
+            if (task.freq === 'monthly') return new Date().getDate() == parseInt(task.freqVal || 1);
+            if (task.freq === 'specific_date') return task.freqVal === getTodayDateString();
+            return true;
+        }
+
+        function handleFreqChange(type) {
+            const selectEl = document.getElementById(`${type}-task-freq`);
+            const extraEl = document.getElementById(`${type}-freq-extra`);
+            const val = selectEl.value;
+            extraEl.innerHTML = '';
+            extraEl.classList.add('hidden');
+            if (val === 'weekly') {
+                extraEl.classList.remove('hidden');
+                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Pilih Hari</label><select id="${type}-freq-val" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"><option value="1">Senin</option><option value="2">Selasa</option><option value="3">Rabu</option><option value="4">Kamis</option><option value="5">Jumat</option><option value="6">Sabtu</option><option value="0">Minggu</option></select>`;
+            } else if (val === 'monthly') {
+                extraEl.classList.remove('hidden');
+                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Tanggal (1-31)</label><input type="number" id="${type}-freq-val" min="1" max="31" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">`;
+            } else if (val === 'specific_date') {
+                extraEl.classList.remove('hidden');
+                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Tanggal</label><input type="date" id="${type}-freq-val" value="${getTodayDateString()}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">`;
+            } else if (val === 'custom_day') {
+                extraEl.classList.remove('hidden');
+                extraEl.innerHTML = `<label class="text-[11px] text-slate-400 block mb-1">Hari Aktif</label><div class="grid grid-cols-4 gap-1 text-[10px]" id="${type}-custom-days-container"><label><input type="checkbox" value="1" checked> Sen</label><label><input type="checkbox" value="2"> Sel</label><label><input type="checkbox" value="3"> Rab</label><label><input type="checkbox" value="4"> Kam</label><label><input type="checkbox" value="5"> Jum</label><label><input type="checkbox" value="6"> Sab</label><label><input type="checkbox" value="0"> Min</label></div>`;
+            }
+        }
+
+        function moveTaskUp(visibleIndex) {
+            let visibleTasks = getFilteredTasks();
+            if (visibleIndex <= 0) return;
+            const currentTask = visibleTasks[visibleIndex];
+            const prevTask = visibleTasks[visibleIndex - 1];
+            const currentIndex = tasks.findIndex(t => t.id === currentTask.id);
+            const targetIndex = tasks.findIndex(t => t.id === prevTask.id);
+            if (currentIndex !== -1 && targetIndex !== -1) {
+                const temp = tasks[currentIndex];
+                tasks[currentIndex] = tasks[targetIndex];
+                tasks[targetIndex] = temp;
+                saveDataLocally();
+                renderTodoList();
+            }
+        }
+
+        function moveTaskDown(visibleIndex) {
+            let visibleTasks = getFilteredTasks();
+            if (visibleIndex >= visibleTasks.length - 1) return;
+            const currentTask = visibleTasks[visibleIndex];
+            const nextTask = visibleTasks[visibleIndex + 1];
+            const currentIndex = tasks.findIndex(t => t.id === currentTask.id);
+            const targetIndex = tasks.findIndex(t => t.id === nextTask.id);
+            if (currentIndex !== -1 && targetIndex !== -1) {
+                const temp = tasks[currentIndex];
+                tasks[currentIndex] = tasks[targetIndex];
+                tasks[targetIndex] = temp;
+                saveDataLocally();
+                renderTodoList();
+            }
+        }
+
+        function getFilteredTasks() {
+            const catFilter = document.getElementById('filter-category').value;
+            const prioFilter = document.getElementById('filter-priority').value;
+            
+            return tasks.filter(t => {
+                const active = isTaskActiveForSelectedDay(t);
+                const matchCat = catFilter === 'all' || t.category === catFilter;
+                const matchPrio = prioFilter === 'all' || t.priority === prioFilter;
+                return active && matchCat && matchPrio;
+            });
+        }
+                    function renderTodoList() {
+            const container = document.getElementById('todo-list');
+            container.innerHTML = '';
+            const dayProgress = progressData[selectedDay] || {};
+            let visibleTasks = getFilteredTasks();
+            let completedCount = 0;
+
+            if (visibleTasks.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Tidak ada tugas sesuai filter/hari ini.</div>`;
+            }
+
+            visibleTasks.forEach((task, index) => {
+                const currentVal = dayProgress[task.id] || 0;
+                const isCompleted = currentVal >= task.target;
+                if (isCompleted) completedCount++;
+
+                const prioColor = task.priority === 'tinggi' ? 'border-l-rose-500' : (task.priority === 'rendah' ? 'border-l-emerald-500' : 'border-l-amber-500');
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-800/60 border border-slate-700/50 border-l-4 ${prioColor} rounded-xl p-2 flex items-center justify-between gap-1.5 shadow-sm transition hover:border-slate-600 ${isCompleted ? 'bg-slate-800/30' : ''}`;
+                card.innerHTML = `
+                    <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                        <div class="flex flex-col gap-0.5">
+                            <button onclick="moveTaskUp(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition">▲</button>
+                            <button onclick="moveTaskDown(${index})" class="w-4 h-3 bg-slate-700/85 hover:bg-slate-600 text-slate-200 rounded-[3px] text-[8px] flex items-center justify-center font-bold transition">▼</button>
                         </div>
-                        <button class="btn-icon" onclick="editTask(${t.id}, '${t.title}', ${t.target})">✏️</button>
-                        <button class="btn-icon" onclick="deleteTask(${t.id})">🗑️</button>
+                        <button onclick="toggleCheck(${task.id})" class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold text-xs' : 'border-slate-600 hover:border-emerald-400'}">${isCompleted ? '✓' : ''}</button>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium text-slate-200 truncate ${isCompleted ? 'line-through text-slate-500' : ''}">${task.title}</p>
+                            <span class="text-[9px] text-slate-400 bg-slate-900/60 px-1.5 py-0.5 rounded">${task.category || 'Pribadi'}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <button onclick="decrementTask(${task.id})" class="w-6 h-6 rounded bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs hover:bg-slate-600">-</button>
+                        <button onclick="manualSetCount(${task.id}, ${currentVal}, ${task.target})" class="bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-300 hover:border-emerald-500">${task.target === 1 ? (isCompleted ? 'Selesai' : '0/1') : `${currentVal}/${task.target}`}</button>
+                        <button onclick="incrementTask(${task.id}, ${task.target})" class="w-6 h-6 rounded bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs hover:bg-emerald-500 hover:text-white">+</button>
+                        <button onclick="openEditModal(${task.id})" class="p-1 text-slate-500 hover:text-slate-300 text-xs">✏️</button>
+                        <button onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" class="p-1 text-slate-500 hover:text-rose-400 text-xs">🗑️</button>
                     </div>
                 `;
-                taskList.appendChild(item);
+                container.appendChild(card);
             });
 
-            const percent = totalTarget > 0 ? Math.round((totalDone / totalTarget) * 100) : 0;
-            document.getElementById('percentText').innerText = `${percent}%`;
-            document.getElementById('progressFill').style.width = `${percent}%`;
-            document.getElementById('summaryText').innerText = `${completedTasksCount} dari ${tasksData.length} tugas selesai`;
+            const totalTasks = visibleTasks.length;
+            const percent = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
+            document.getElementById('percent-text').innerText = `${percent}%`;
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('tasks-count-text').innerText = `${completedCount} dari ${totalTasks} tugas selesai`;
         }
 
-        async function updateCounter(id, newCount) {
-            if (newCount < 0) return;
-            const t = tasksData.find(item => item.id === id);
-            if (t) { t.current = newCount; renderUI(); }
-            await db.from('tasks').update({ current: newCount }).eq('id', id);
+        function onCalendarDateChange() {
+            const dateVal = document.getElementById('calendar-date-picker').value;
+            const listContainer = document.getElementById('calendar-tasks-list');
+            const labelEl = document.getElementById('calendar-selected-label');
+            const countEl = document.getElementById('calendar-task-count');
+            if (!dateVal) return;
+            const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+            labelEl.innerText = `Agenda: ${formattedDate}`;
+            let matchingTasks = tasks.filter(t => isTaskActiveForDate(t, dateVal));
+            countEl.innerText = `${matchingTasks.length} Kegiatan`;
+            listContainer.innerHTML = '';
+            if (matchingTasks.length === 0) {
+                listContainer.innerHTML = `<div class="text-center py-4 text-xs text-slate-500">Tidak ada kegiatan di tanggal ini.</div>`;
+                return;
+            }
+            matchingTasks.forEach((task, idx) => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 flex items-center justify-between text-xs text-slate-200';
+                item.innerHTML = `<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">${idx + 1}</span><span class="font-medium">${task.title}</span></div><span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Target: ${task.target}</span>`;
+                listContainer.appendChild(item);
+            });
+        }
+                    async function toggleCheck(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            if (!progressData[selectedDay]) progressData[selectedDay] = {};
+            const current = progressData[selectedDay][taskId] || 0;
+            progressData[selectedDay][taskId] = (current >= task.target) ? 0 : task.target;
+            saveDataLocally();
+            renderTodoList();
+            if (currentUser) await db.from('tasks').update({ current: progressData[selectedDay][taskId] }).eq('id', taskId);
         }
 
-        async function toggleTask(id, isDone) {
-            const t = tasksData.find(item => item.id === id);
-            if (t) {
-                t.current = isDone ? 0 : t.target;
-                renderUI();
-                await db.from('tasks').update({ current: t.current }).eq('id', id);
+        async function incrementTask(taskId, target) {
+            if (!progressData[selectedDay]) progressData[selectedDay] = {};
+            const current = progressData[selectedDay][taskId] || 0;
+            if (current < target) {
+                progressData[selectedDay][taskId] = current + 1;
+                saveDataLocally();
+                renderTodoList();
+                if (currentUser) await db.from('tasks').update({ current: progressData[selectedDay][taskId] }).eq('id', taskId);
             }
         }
 
-        async function addNewTask() {
-            const title = prompt("Nama tugas baru:");
+        async function decrementTask(taskId) {
+            if (!progressData[selectedDay]) progressData[selectedDay] = {};
+            const current = progressData[selectedDay][taskId] || 0;
+            if (current > 0) {
+                progressData[selectedDay][taskId] = current - 1;
+                saveDataLocally();
+                renderTodoList();
+                if (currentUser) await db.from('tasks').update({ current: progressData[selectedDay][taskId] }).eq('id', taskId);
+            }
+        }
+
+        async function manualSetCount(taskId, currentVal, target) {
+            const val = prompt(`Masukkan progres (0 - ${target}):`, currentVal);
+            if (val !== null && !isNaN(val)) {
+                let num = parseInt(val);
+                if (num < 0) num = 0;
+                if (!progressData[selectedDay]) progressData[selectedDay] = {};
+                progressData[selectedDay][taskId] = num;
+                saveDataLocally();
+                renderTodoList();
+                if (currentUser) await db.from('tasks').update({ current: num }).eq('id', taskId);
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('new-task-title').value = '';
+            document.getElementById('new-task-target').value = '1';
+            document.getElementById('new-task-freq').value = 'daily';
+            document.getElementById('new-freq-extra').innerHTML = '';
+            document.getElementById('new-freq-extra').classList.add('hidden');
+            document.getElementById('add-modal').classList.remove('hidden');
+            document.getElementById('add-modal').classList.add('flex');
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-modal').classList.add('hidden');
+            document.getElementById('add-modal').classList.remove('flex');
+        }
+
+        async function saveNewTask() {
+            const title = document.getElementById('new-task-title').value.trim();
+            const category = document.getElementById('new-task-category').value;
+            const priority = document.getElementById('new-task-priority').value;
+            const freq = document.getElementById('new-task-freq').value;
+            const target = parseInt(document.getElementById('new-task-target').value) || 1;
             if (!title) return;
-            const target = prompt("Target harian:", "1");
-            if (!target) return;
 
-            const { data, error } = await db.from('tasks').insert([{ title, target: parseInt(target), current: 0 }]).select();
-            if (!error && data) { tasksData.push(data[0]); renderUI(); }
+            let freqVal = '';
+            if (freq === 'weekly' || freq === 'monthly' || freq === 'specific_date') {
+                const el = document.getElementById('new-freq-val');
+                freqVal = el ? el.value : '';
+            } else if (freq === 'custom_day') {
+                const checkboxes = document.querySelectorAll('#new-custom-days-container input:checked');
+                freqVal = Array.from(checkboxes).map(cb => cb.value).join(',');
+            }
+
+            if (currentUser) {
+                const { data, error } = await db.from('tasks').insert([{
+                    user_id: currentUser.id,
+                    title, target, category, priority, current: 0, freq, freq_val: freqVal
+                }]).select();
+                if (!error && data) {
+                    tasks.push({ id: data[0].id, title, target, category, priority, freq, freqVal });
+                }
+            } else {
+                tasks.push({ id: Date.now(), title, target, category, priority, freq, freqVal });
+            }
+
+            saveDataLocally();
+            renderTodoList();
+            closeAddModal();
         }
 
-        async function editTask(id, oldTitle, oldTarget) {
-            const title = prompt("Edit nama tugas:", oldTitle);
+        function openEditModal(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            document.getElementById('edit-task-id').value = task.id;
+            document.getElementById('edit-task-title').value = task.title;
+            document.getElementById('edit-task-category').value = task.category || 'Pribadi';
+            document.getElementById('edit-task-priority').value = task.priority || 'sedang';
+            document.getElementById('edit-task-target').value = task.target;
+            document.getElementById('edit-task-freq').value = task.freq || 'daily';
+            handleFreqChange('edit');
+            if (task.freq === 'weekly' || task.freq === 'monthly' || task.freq === 'specific_date') {
+                const el = document.getElementById('edit-freq-val');
+                if (el) el.value = task.freqVal;
+            } else if (task.freq === 'custom_day') {
+                let activeDays = task.freqVal ? task.freqVal.toString().split(',') : [];
+                document.querySelectorAll('#edit-custom-days-container input').forEach(cb => { cb.checked = activeDays.includes(cb.value); });
+            }
+            document.getElementById('edit-modal').classList.remove('hidden');
+            document.getElementById('edit-modal').classList.add('flex');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-modal').classList.remove('flex');
+        }
+
+        async function saveEditTask() {
+            const id = parseInt(document.getElementById('edit-task-id').value);
+            const title = document.getElementById('edit-task-title').value.trim();
+            const category = document.getElementById('edit-task-category').value;
+            const priority = document.getElementById('edit-task-priority').value;
+            const freq = document.getElementById('edit-task-freq').value;
+            const target = parseInt(document.getElementById('edit-task-target').value) || 1;
             if (!title) return;
-            const target = prompt("Edit target harian:", oldTarget);
-            if (!target) return;
 
-            const t = tasksData.find(item => item.id === id);
-            if (t) {
-                t.title = title;
-                t.target = parseInt(target);
-                renderUI();
-                await db.from('tasks').update({ title, target: parseInt(target) }).eq('id', id);
+            let freqVal = '';
+            if (freq === 'weekly' || freq === 'monthly' || freq === 'specific_date') {
+                const el = document.getElementById('edit-freq-val');
+                freqVal = el ? el.value : '';
+            } else if (freq === 'custom_day') {
+                const checkboxes = document.querySelectorAll('#edit-custom-days-container input:checked');
+                freqVal = Array.from(checkboxes).map(cb => cb.value).join(',');
+            }
+
+            const taskIndex = tasks.findIndex(t => t.id === id);
+            if (taskIndex !== -1) {
+                tasks[taskIndex] = { id, title, target, category, priority, freq, freqVal };
+                saveDataLocally();
+                renderTodoList();
+                if (currentUser) await db.from('tasks').update({ title, target, category, priority, freq, freq_val: freqVal }).eq('id', id);
+            }
+            closeEditModal();
+        }
+
+        async function deleteTask(taskId, taskTitle) {
+            if (confirm(`Hapus tugas "${taskTitle}"?`)) {
+                tasks = tasks.filter(t => t.id !== taskId);
+                saveDataLocally();
+                renderTodoList();
+                if (currentUser) await db.from('tasks').delete().eq('id', taskId);
+            }
+            }
+                    async function resetCurrentDay() {
+            if (confirm("Reset progres hari ini ke 0%?")) {
+                progressData[selectedDay] = {};
+                saveDataLocally();
+                renderTodoList();
+                if (currentUser) await db.from('tasks').update({ current: 0 }).eq('user_id', currentUser.id);
             }
         }
 
-        async function deleteTask(id) {
-            if (confirm("Hapus tugas ini?")) {
-                tasksData = tasksData.filter(item => item.id !== id);
-                renderUI();
-                await db.from('tasks').delete().eq('id', id);
+        async function resetAllData() {
+            if (confirm("PERINGATAN: Semua data dan tugas akan dihapus total!")) {
+                if (confirm("Yakin ingin mengembalikan ke pengaturan awal?")) {
+                    localStorage.clear();
+                    if (currentUser) await db.from('tasks').delete().eq('user_id', currentUser.id);
+                    location.reload();
+                }
             }
         }
 
-        async function resetDay() {
-            tasksData.forEach(t => t.current = 0);
-            renderUI();
-            await db.from('tasks').update({ current: 0 }).gt('id', 0);
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        alert("Pengingat notifikasi telah diaktifkan!");
+                        new Notification("DayliDo Pro", { body: "Pengingat tugas aktif!" });
+                    }
+                });
+            } else {
+                alert("Browser tidak mendukung notifikasi.");
+            }
         }
 
-        fetchTasks();
+        function backupToInternalStorage() {
+            const backupData = { user: userName, tasks: tasks, progress: progressData, backupTime: new Date().toISOString() };
+            try {
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `DayliDo_Backup_${getTodayDateString()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                alert("Backup berhasil diunduh!");
+            } catch (err) {
+                alert("Gagal backup: " + err.message);
+            }
+        }
+
+        function restoreFromInternalStorage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const content = JSON.parse(e.target.result);
+                    if (content.tasks && content.progress) {
+                        tasks = content.tasks;
+                        progressData = content.progress;
+                        if (content.user) { userName = content.user; localStorage.setItem('daylido_username', userName); }
+                        saveDataLocally();
+                        updateUserInfo();
+                        renderTodoList();
+                        
+                        if (currentUser) {
+                            for (const task of tasks) {
+                                await db.from('tasks').upsert({ id: task.id, user_id: currentUser.id, title: task.title, target: task.target, category: task.category, priority: task.priority, current: 0, freq: task.freq, freq_val: task.freqVal });
+                            }
+                        }
+                        alert("Data berhasil dipulihkan!");
+                    } else { alert("Format file salah."); }
+                } catch (err) { alert("Gagal membaca file."); }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-page').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            ['tasks', 'calendar', 'stats', 'settings'].forEach(n => {
+                const btn = document.getElementById(`nav-${n}`);
+                btn.className = (n === tabName) ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition' : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition';
+            });
+            if (tabName === 'tasks') renderTodoList();
+            if (tabName === 'calendar') onCalendarDateChange();
+            if (tabName === 'stats') renderStatsTab();
+        }
+
+        function renderStatsTab() {
+            const filter = document.getElementById('analytics-filter').value;
+            const container = document.getElementById('stats-detail-list');
+            container.innerHTML = '';
+            let totalDoneAll = 0, totalPossibleAll = 0;
+            let periods = filter === 'daily' ? DAYS.map(d => ({ label: d.full, key: d.key })) : [{ label: 'Periode Ini', key: selectedDay }];
+            periods.forEach(p => {
+                const dayProg = progressData[p.key] || {};
+                let done = 0;
+                tasks.forEach(t => { if ((dayProg[t.id] || 0) >= t.target) done++; });
+                totalDoneAll += done;
+                totalPossibleAll += tasks.length;
+                const pct = tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100);
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between text-xs py-1 border-b border-slate-700/40 last:border-0';
+                row.innerHTML = `<span class="text-slate-300 font-medium">${p.label}</span><div class="flex items-center gap-2"><div class="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${pct}%"></div></div><span class="text-emerald-400 font-mono text-[11px] font-bold">${pct}%</span></div>`;
+                container.appendChild(row);
+            });
+            const overallPct = totalPossibleAll === 0 ? 0 : Math.round((totalDoneAll / Math.max(totalPossibleAll, 1)) * 100);
+            document.getElementById('stat-avg-completion').innerText = `${overallPct}%`;
+            document.getElementById('stat-total-done').innerText = totalDoneAll;
+        }
+
+        function saveDataLocally() {
+            localStorage.setItem('daylido_progress', JSON.stringify(progressData));
+        }
+
+        window.onload = checkSession;
     </script>
 </body>
 </html>
