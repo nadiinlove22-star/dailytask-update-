@@ -1,4 +1,67 @@
 let selectedDay = getTodayKey();
+let isRegisterMode = false;
+
+function toggleAuthMode() {
+    isRegisterMode = !isRegisterMode;
+    const title = document.getElementById('auth-modal-title');
+    const subtitle = document.getElementById('auth-modal-subtitle');
+    const btn = document.getElementById('auth-submit-btn');
+    const toggleText = document.getElementById('auth-toggle-text');
+
+    if (isRegisterMode) {
+        title.innerText = "Buat Akun Baru";
+        subtitle.innerText = "Daftar email dan password untuk menyimpan tugas kamu.";
+        btn.innerText = "Daftar & Masuk";
+        toggleText.innerHTML = `Sudah punya akun? <button type="button" onclick="toggleAuthMode()" class="text-emerald-400 font-semibold hover:underline">Masuk</button>`;
+    } else {
+        title.innerText = "Masuk ke Akun";
+        subtitle.innerText = "Masukkan email dan password untuk sync data.";
+        btn.innerText = "Masuk";
+        toggleText.innerHTML = `Belum punya akun? <button type="button" onclick="toggleAuthMode()" class="text-emerald-400 font-semibold hover:underline">Daftar</button>`;
+    }
+}
+
+async function handleAuthSubmit(event) {
+    event.preventDefault();
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
+    const submitBtn = document.getElementById('auth-submit-btn');
+
+    if (!email || !password) {
+        alert("Email dan password wajib diisi!");
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Memproses...";
+
+    try {
+        if (isRegisterMode) {
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
+            if (error) throw error;
+            alert("Pendaftaran berhasil! Kamu otomatis masuk.");
+            currentUser = data.user;
+        } else {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            currentUser = data.user;
+        }
+
+        closeLoginModal();
+        await loadDataFromSupabase(() => {
+            updateUserInfo();
+            renderDaysBar();
+            changeDay(selectedDay);
+            switchTab('tasks');
+        });
+
+    } catch (err) {
+        alert("Gagal autentikasi: " + err.message);
+    } font-bold {
+        submitBtn.disabled = false;
+        submitBtn.innerText = isRegisterMode ? "Daftar & Masuk" : "Masuk";
+    }
+}
 
 function getSelectedDateString() {
     const today = new Date();
@@ -14,8 +77,8 @@ function getSelectedDateString() {
 }
 
 function updateUserInfo() {
-    const nameDisplay = userName ? `Hey, ${userName}!` : 'Hey, Guest!';
-    const initial = userName ? userName.charAt(0).toUpperCase() : '?';
+    const nameDisplay = currentUser ? `Hey, ${userName || currentUser.email.split('@')[0]}!` : 'Belum Login';
+    const initial = currentUser ? (userName || currentUser.email).charAt(0).toUpperCase() : '?';
     
     const userDisplayEl = document.getElementById('user-name-display');
     if (userDisplayEl) userDisplayEl.innerText = nameDisplay;
@@ -24,13 +87,10 @@ function updateUserInfo() {
     if (avatarEl) avatarEl.innerText = initial;
     
     const settingsDisplay = document.getElementById('settings-user-name-display');
-    if (settingsDisplay) settingsDisplay.innerText = userName ? `Akun: ${userName}` : 'Belum Terhubung Akun';
+    if (settingsDisplay) settingsDisplay.innerText = currentUser ? `Akun: ${currentUser.email}` : 'Belum Terhubung Akun';
 }
 
 function openLoginModal() {
-    const inputEl = document.getElementById('login-username-input');
-    if (inputEl) inputEl.value = userName || '';
-    
     const modal = document.getElementById('login-modal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -44,28 +104,6 @@ function closeLoginModal() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
-}
-
-// PROSES LOGIN / GANTI AKUN INSTAN
-async function submitLogin() {
-    const inputEl = document.getElementById('login-username-input');
-    const inputVal = inputEl ? inputEl.value.trim() : '';
-    
-    if (!inputVal) {
-        alert("Masukkan username terlebih dahulu.");
-        return;
-    }
-
-    userName = inputVal;
-    localStorage.setItem('daylido_username', userName);
-    closeLoginModal();
-    
-    // Muat ulang data dari Supabase untuk username yang baru dimasukkan
-    await loadDataFromSupabase(() => {
-        updateUserInfo();
-        renderDaysBar();
-        renderTodoList();
-    });
 }
 
 function renderDaysBar() {
@@ -98,13 +136,18 @@ function renderTodoList() {
     if (!container) return;
     container.innerHTML = '';
     
+    if (!currentUser) {
+        container.innerHTML = `<div class="text-center py-8 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">Silakan login atau daftar di tombol kanan atas untuk melihat & menyimpan tugas.</div>`;
+        return;
+    }
+
     const dateStr = getSelectedDateString();
     const dayProgress = progressData[dateStr] || {};
     let visibleTasks = tasks.filter(t => isTaskActiveForSelectedDay(t));
     let completedCount = 0;
 
     if (visibleTasks.length === 0) {
-        container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Belum ada tugas di tanggal ini.</div>`;
+        container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Belum ada tugas di hari ini. Klik tombol Tambah Tugas Baru.</div>`;
     }
 
     visibleTasks.forEach((task, index) => {
@@ -189,6 +232,32 @@ function manualSetCount(taskId, currentVal, target) {
     }
 }
 
+function moveTaskUp(index) {
+    if (index <= 0) return;
+    const temp = tasks[index];
+    tasks[index] = tasks[index - 1];
+    tasks[index - 1] = temp;
+    saveData();
+    renderTodoList();
+}
+
+function moveTaskDown(index) {
+    if (index >= tasks.length - 1) return;
+    const temp = tasks[index];
+    tasks[index] = tasks[index + 1];
+    tasks[index + 1] = temp;
+    saveData();
+    renderTodoList();
+}
+
+function deleteTask(id, title) {
+    if (confirm(`Hapus tugas "${title}"?`)) {
+        tasks = tasks.filter(t => t.id !== id);
+        saveData();
+        renderTodoList();
+    }
+}
+
 function resetCurrentDay() {
     const dateStr = getSelectedDateString();
     if (confirm("Reset progres hari ini saja? (Tugas tidak akan terhapus)")) {
@@ -199,6 +268,10 @@ function resetCurrentDay() {
 }
 
 function openAddModal() {
+    if (!currentUser) {
+        openLoginModal();
+        return;
+    }
     document.getElementById('new-task-title').value = '';
     document.getElementById('new-task-target').value = '1';
     document.getElementById('new-task-freq').value = 'daily';
@@ -211,6 +284,31 @@ function openAddModal() {
 function closeAddModal() {
     document.getElementById('add-modal').classList.add('hidden');
     document.getElementById('add-modal').classList.remove('flex');
+}
+
+function saveNewTask() {
+    const title = document.getElementById('new-task-title').value.trim();
+    const target = parseInt(document.getElementById('new-task-target').value) || 1;
+    const freq = document.getElementById('new-task-freq').value;
+    let freqVal = null;
+
+    if (!title) { alert('Nama tugas tidak boleh kosong.'); return; }
+
+    if (freq === 'weekly' || freq === 'monthly' || freq === 'specific_date') {
+        const el = document.getElementById('new-freq-val');
+        if (el) freqVal = el.value;
+    } else if (freq === 'custom_day') {
+        let selectedDays = [];
+        document.querySelectorAll('#new-custom-days-container input:checked').forEach(cb => selectedDays.push(cb.value));
+        if (selectedDays.length === 0) { alert('Pilih minimal satu hari.'); return; }
+        freqVal = selectedDays.join(',');
+    }
+
+    const newTask = { id: Date.now(), title, target, freq, freqVal };
+    tasks.push(newTask);
+    saveData();
+    closeAddModal();
+    renderTodoList();
 }
 
 function openEditModal(id) {
@@ -237,6 +335,34 @@ function closeEditModal() {
     document.getElementById('edit-modal').classList.remove('flex');
 }
 
+function saveEditTask() {
+    const id = parseInt(document.getElementById('edit-task-id').value);
+    const title = document.getElementById('edit-task-title').value.trim();
+    const target = parseInt(document.getElementById('edit-task-target').value) || 1;
+    const freq = document.getElementById('edit-task-freq').value;
+    let freqVal = null;
+
+    if (!title) { alert('Nama tugas tidak boleh kosong.'); return; }
+
+    if (freq === 'weekly' || freq === 'monthly' || freq === 'specific_date') {
+        const el = document.getElementById('edit-freq-val');
+        if (el) freqVal = el.value;
+    } else if (freq === 'custom_day') {
+        let selectedDays = [];
+        document.querySelectorAll('#edit-custom-days-container input:checked').forEach(cb => selectedDays.push(cb.value));
+        if (selectedDays.length === 0) { alert('Pilih minimal satu hari.'); return; }
+        freqVal = selectedDays.join(',');
+    }
+
+    const index = tasks.findIndex(t => t.id === id);
+    if (index !== -1) {
+        tasks[index] = { ...tasks[index], title, target, freq, freqVal };
+        saveData();
+        closeEditModal();
+        renderTodoList();
+    }
+}
+
 function handleFreqChange(type) {
     const selectEl = document.getElementById(`${type}-task-freq`);
     const extraEl = document.getElementById(`${type}-freq-extra`);
@@ -259,6 +385,10 @@ function handleFreqChange(type) {
 }
 
 function switchTab(tabName) {
+    if (!currentUser && tabName !== 'settings') {
+        openLoginModal();
+        return;
+    }
     document.querySelectorAll('.tab-page').forEach(el => el.classList.add('hidden'));
     document.getElementById(`tab-${tabName}`).classList.remove('hidden');
     ['tasks', 'calendar', 'stats', 'settings'].forEach(n => {
@@ -288,44 +418,4 @@ function onCalendarDateChange() {
     matchingTasks.forEach((task, idx) => {
         const item = document.createElement('div');
         item.className = 'bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 flex items-center justify-between text-xs text-slate-200';
-        item.innerHTML = `<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">${idx + 1}</span><span class="font-medium">${task.title}</span></div><span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Target: ${task.target}</span>`;
-        listContainer.appendChild(item);
-    });
-}
-
-function renderStatsTab() {
-    const filter = document.getElementById('analytics-filter').value;
-    const container = document.getElementById('stats-detail-list');
-    container.innerHTML = '';
-    let totalDoneAll = 0, totalPossibleAll = 0;
-    let periods = filter === 'daily' ? DAYS.map(d => ({ label: d.full, key: d.key })) : [{ label: 'Periode Ini', key: selectedDay }];
-    
-    periods.forEach(p => {
-        const today = new Date();
-        const dayObj = DAYS.find(d => d.key === p.key);
-        let targetDate = new Date(today);
-        if (dayObj) {
-            let diff = dayObj.index - today.getDay();
-            targetDate.setDate(today.getDate() + diff);
-        }
-        const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
-
-        const dayProg = progressData[dateStr] || {};
-        let activeTasks = tasks.filter(t => isTaskActiveForDate(t, dateStr));
-        let done = 0;
-        activeTasks.forEach(t => { if ((dayProg[t.id] || 0) >= t.target) done++; });
-        
-        totalDoneAll += done;
-        totalPossibleAll += activeTasks.length;
-        const pct = activeTasks.length === 0 ? 0 : Math.round((done / activeTasks.length) * 100);
-        
-        const row = document.createElement('div');
-        row.className = 'flex items-center justify-between text-xs py-1 border-b border-slate-700/40 last:border-0';
-        row.innerHTML = `<span class="text-slate-300 font-medium">${p.label}</span><div class="flex items-center gap-2"><div class="w-24 bg-slate-900 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${pct}%"></div></div><span class="text-emerald-400 font-mono text-[11px] font-bold">${pct}%</span></div>`;
-        container.appendChild(row);
-    });
-
-    const overallPct = totalPossibleAll === 0 ? 0 : Math.round((totalDoneAll / Math.max(totalPossibleAll, 1)) * 100);
-    document.getElementById('stat-avg-completion').innerText = `${overallPct}%`;
-    document.getElementById('stat-total-done').innerText = totalDoneAll;
-}
+        item.innerHTML = `<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-cent
