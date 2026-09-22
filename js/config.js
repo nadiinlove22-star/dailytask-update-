@@ -1,4 +1,5 @@
 const SUPABASE_URL = 'https://wkjxohnhhgenfvxiorkh.supabase.co';
+// Tempel kunci (anon public) asli yang kamu salin dari dashboard Supabase di bawah ini
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndranhvaG5oaGdlbmZ2eGlvcmtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDI4MTgsImV4cCI6MjEwNTY3ODgxOH0.j5oNNjLnnmM0e-ltWftL09R9rMKaIQ6dyliE_aytTc8';
 
 let supabaseClient = null;
