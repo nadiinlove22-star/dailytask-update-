@@ -453,32 +453,68 @@ function switchTab(tabName) {
 
 function onCalendarDateChange() {
     const datePicker = document.getElementById('calendar-date-picker');
-    const dateVal = datePicker ? datePicker.value : '';
+    const startDateVal = datePicker ? datePicker.value : getTodayDateString();
     const listContainer = document.getElementById('calendar-tasks-list');
     const labelEl = document.getElementById('calendar-selected-label');
     const countEl = document.getElementById('calendar-task-count');
 
-    if (!dateVal || !listContainer) return;
+    if (!startDateVal || !listContainer) return;
 
-    const formattedDate = new Date(dateVal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-    if (labelEl) labelEl.innerText = `Agenda: ${formattedDate}`;
-
-    let matchingTasks = tasks.filter(t => isTaskActiveForDate(t, dateVal));
-    if (countEl) countEl.innerText = `${matchingTasks.length} Kegiatan`;
+    const startDate = new Date(startDateVal);
+    
+    // Set label header
+    if (labelEl) labelEl.innerText = `Agenda 30 Hari Ke Depan`;
 
     listContainer.innerHTML = '';
-    if (matchingTasks.length === 0) {
-        listContainer.innerHTML = `<div class="text-center py-4 text-xs text-slate-500">Tidak ada kegiatan di tanggal ini.</div>`;
-        return;
+    let totalAllTasks = 0;
+
+    // Looping 30 hari ke depan mulai dari tanggal yang dipilih
+    for (let i = 0; i < 30; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+
+        const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+        const formattedDate = currentDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+
+        // Cek tugas yang aktif di tanggal ini
+        let matchingTasks = tasks.filter(t => isTaskActiveForDate(t, dateStr));
+
+        if (matchingTasks.length > 0) {
+            totalAllTasks += matchingTasks.length;
+
+            // Buat grup per tanggal
+            const dayGroup = document.createElement('div');
+            dayGroup.className = 'flex flex-col gap-1.5 mb-3 bg-slate-900/60 border border-slate-800 rounded-xl p-2.5';
+
+            let tasksHtml = matchingTasks.map((task, idx) => `
+                <div class="bg-slate-800/60 border border-slate-700/50 rounded-lg p-2 flex items-center justify-between text-xs text-slate-200">
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[9px]">${idx + 1}</span>
+                        <span class="font-medium">${task.title}</span>
+                    </div>
+                    <span class="text-[9px] bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded font-mono">Target: ${task.target}</span>
+                </div>
+            `).join('');
+
+            dayGroup.innerHTML = `
+                <div class="flex items-center justify-between text-[11px] font-bold text-emerald-400 border-b border-slate-800 pb-1 mb-1">
+                    <span>📅 ${formattedDate}</span>
+                    <span class="text-[9px] text-slate-400 font-normal">${matchingTasks.length} Tugas</span>
+                </div>
+                ${tasksHtml}
+            `;
+
+            listContainer.appendChild(dayGroup);
+        }
     }
 
-    matchingTasks.forEach((task, idx) => {
-        const item = document.createElement('div');
-        item.className = 'bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 flex items-center justify-between text-xs text-slate-200';
-        item.innerHTML = `<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">${idx + 1}</span><span class="font-medium">${task.title}</span></div><span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">Target: ${task.target}</span>`;
-        listContainer.appendChild(item);
-    });
+    if (countEl) countEl.innerText = `${totalAllTasks} Total Kegiatan`;
+
+    if (totalAllTasks === 0) {
+        listContainer.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Tidak ada agenda kegiatan dalam 30 hari ke depan.</div>`;
+    }
 }
+
 
 function renderStatsTab() {
     const filterEl = document.getElementById('analytics-filter');
