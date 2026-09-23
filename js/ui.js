@@ -239,22 +239,45 @@ function manualSetCount(taskId, currentVal, target) {
 }
 
 function moveTaskUp(index) {
-    if (index <= 0) return;
-    const temp = tasks[index];
-    tasks[index] = tasks[index - 1];
-    tasks[index - 1] = temp;
+  const currentDateTasks = getTasksForDate(getSelectedDateString());
+  if (index <= 0 || index >= currentDateTasks.length) return;
+
+  const currentTask = currentDateTasks[index];
+  const targetTask = currentDateTasks[index - 1];
+
+  const mainIndexCurr = tasks.findIndex(t => t.id === currentTask.id);
+  const mainIndexTarget = tasks.findIndex(t => t.id === targetTask.id);
+
+  if (mainIndexCurr !== -1 && mainIndexTarget !== -1) {
+    const temp = tasks[mainIndexCurr];
+    tasks[mainIndexCurr] = tasks[mainIndexTarget];
+    tasks[mainIndexTarget] = temp;
+
     saveData();
     renderTodoList();
+  }
 }
 
 function moveTaskDown(index) {
-    if (index >= tasks.length - 1) return;
-    const temp = tasks[index];
-    tasks[index] = tasks[index + 1];
-    tasks[index + 1] = temp;
+  const currentDateTasks = getTasksForDate(getSelectedDateString());
+  if (index < 0 || index >= currentDateTasks.length - 1) return;
+
+  const currentTask = currentDateTasks[index];
+  const targetTask = currentDateTasks[index + 1];
+
+  const mainIndexCurr = tasks.findIndex(t => t.id === currentTask.id);
+  const mainIndexTarget = tasks.findIndex(t => t.id === targetTask.id);
+
+  if (mainIndexCurr !== -1 && mainIndexTarget !== -1) {
+    const temp = tasks[mainIndexCurr];
+    tasks[mainIndexCurr] = tasks[mainIndexTarget];
+    tasks[mainIndexTarget] = temp;
+
     saveData();
     renderTodoList();
+  }
 }
+
 
 function deleteTask(id, title) {
     if (confirm(`Hapus tugas "${title}"?`)) {
