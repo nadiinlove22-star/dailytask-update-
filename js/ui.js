@@ -239,46 +239,55 @@ function manualSetCount(taskId, currentVal, target) {
 }
 
 function moveTaskUp(index) {
-  // Ambil daftar tugas yang tampil di hari yang sedang dipilih
+  // 1. Ambil daftar tugas yang sedang tampil hari ini
   const currentDateTasks = tasks.filter(t => isTaskScheduledForDate(t, getSelectedDateString()));
   if (index <= 0 || index >= currentDateTasks.length) return;
 
-  const currentTask = currentDateTasks[index];
-  const targetTask = currentDateTasks[index - 1];
+  // 2. Ambil ID tugas yang mau digeser dan pasangannya
+  const taskIdToMove = currentDateTasks[index].id;
+  const targetTaskId = currentDateTasks[index - 1].id;
 
-  const mainIndexCurr = tasks.findIndex(t => t.id === currentTask.id);
-  const mainIndexTarget = tasks.findIndex(t => t.id === targetTask.id);
+  // 3. Cari posisi indeks asli keduanya di array utama 'tasks'
+  const mainIndexCurr = tasks.findIndex(t => t.id === taskIdToMove);
+  const mainIndexTarget = tasks.findIndex(t => t.id === targetTaskId);
 
   if (mainIndexCurr !== -1 && mainIndexTarget !== -1) {
-    const temp = tasks[mainIndexCurr];
-    tasks[mainIndexCurr] = tasks[mainIndexTarget];
-    tasks[mainIndexTarget] = temp;
+    // 4. Pindahkan posisi di array utama tasks
+    const [movedTask] = tasks.splice(mainIndexCurr, 1);
+    tasks.splice(mainIndexTarget, 0, movedTask);
 
+    // 5. Simpan dan render ulang
     saveData();
     renderTodoList();
   }
 }
 
 function moveTaskDown(index) {
-  // Ambil daftar tugas yang tampil di hari yang sedang dipilih
+  // 1. Ambil daftar tugas yang sedang tampil hari ini
   const currentDateTasks = tasks.filter(t => isTaskScheduledForDate(t, getSelectedDateString()));
   if (index < 0 || index >= currentDateTasks.length - 1) return;
 
-  const currentTask = currentDateTasks[index];
-  const targetTask = currentDateTasks[index + 1];
+  // 2. Ambil ID tugas yang mau digeser dan pasangannya
+  const taskIdToMove = currentDateTasks[index].id;
+  const targetTaskId = currentDateTasks[index + 1].id;
 
-  const mainIndexCurr = tasks.findIndex(t => t.id === currentTask.id);
-  const mainIndexTarget = tasks.findIndex(t => t.id === targetTask.id);
+  // 3. Cari posisi indeks asli keduanya di array utama 'tasks'
+  const mainIndexCurr = tasks.findIndex(t => t.id === taskIdToMove);
+  const mainIndexTarget = tasks.findIndex(t => t.id === targetTaskId);
 
   if (mainIndexCurr !== -1 && mainIndexTarget !== -1) {
-    const temp = tasks[mainIndexCurr];
-    tasks[mainIndexCurr] = tasks[mainIndexTarget];
-    tasks[mainIndexTarget] = temp;
+    // 4. Pindahkan posisi di array utama tasks menggunakan splice agar aman
+    const [movedTask] = tasks.splice(mainIndexCurr, 1);
+    // Sesuaikan target index jika bergeser
+    const newTargetIndex = tasks.findIndex(t => t.id === targetTaskId);
+    tasks.splice(newTargetIndex + 1, 0, movedTask);
 
+    // 5. Simpan dan render ulang
     saveData();
     renderTodoList();
   }
 }
+
 
 
 
