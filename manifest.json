@@ -1,6 +1,6 @@
 {
   "name": "Daily Task",
-  "short_name": "Daiky Task",
+  "short_name": "Daily Task",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b1329",
