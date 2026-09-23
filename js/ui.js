@@ -239,7 +239,8 @@ function manualSetCount(taskId, currentVal, target) {
 }
 
 function moveTaskUp(index) {
-  const currentDateTasks = getTasksForDate(getSelectedDateString());
+  // Ambil daftar tugas yang tampil di hari yang sedang dipilih
+  const currentDateTasks = tasks.filter(t => isTaskScheduledForDate(t, getSelectedDateString()));
   if (index <= 0 || index >= currentDateTasks.length) return;
 
   const currentTask = currentDateTasks[index];
@@ -259,7 +260,8 @@ function moveTaskUp(index) {
 }
 
 function moveTaskDown(index) {
-  const currentDateTasks = getTasksForDate(getSelectedDateString());
+  // Ambil daftar tugas yang tampil di hari yang sedang dipilih
+  const currentDateTasks = tasks.filter(t => isTaskScheduledForDate(t, getSelectedDateString()));
   if (index < 0 || index >= currentDateTasks.length - 1) return;
 
   const currentTask = currentDateTasks[index];
@@ -277,6 +279,7 @@ function moveTaskDown(index) {
     renderTodoList();
   }
 }
+
 
 
 function deleteTask(id, title) {
