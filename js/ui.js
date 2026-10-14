@@ -1010,7 +1010,7 @@ function switchTab(tabName) {
         targetTab.classList.remove('hidden');
     }
 
-    ['tasks', 'calendar', 'stats', 'settings'].forEach(n => {
+    ['tasks', 'notes', 'calendar', 'stats', 'settings'].forEach(n => {
 
         const btn = document.getElementById(`nav-${n}`);
 
@@ -1018,13 +1018,17 @@ function switchTab(tabName) {
 
             btn.className =
                 (n === tabName)
-                    ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition'
-                    : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition';
+                    ? 'flex flex-col items-center justify-center text-emerald-400 font-medium w-1/5 py-1 transition'
+                    : 'flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition';
         }
     });
 
     if (tabName === 'tasks') {
         renderTodoList();
+    }
+
+    if (tabName === 'notes') {
+        if (typeof renderNotes === 'function') renderNotes();
     }
 
     if (tabName === 'calendar') {
