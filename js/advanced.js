@@ -330,8 +330,16 @@
     const panel = document.createElement('section');
     panel.id = 'advanced-reminder-settings';
     panel.className = 'rounded-2xl border border-emerald-400/20 bg-slate-900/80 p-4';
-    panel.innerHTML = `<h2 class="text-sm font-bold text-white">Pengingat browser</h2><p class="mt-1 text-[11px] text-slate-400">Aktifkan izin notifikasi. Pengingat dicek saat Daily Task terbuka. Tidak dijamin berjalan jika aplikasi ditutup.</p><button id="advanced-enable-notifications" type="button" class="mt-3 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200">Aktifkan notifikasi</button>`;
+    panel.innerHTML = `<h2 class="text-sm font-bold text-white">Pengingat browser</h2><p class="mt-1 text-[11px] text-slate-400">Pengingat dicek saat Daily Task terbuka. Notifikasi mungkin tidak muncul jika aplikasi ditutup atau dibatasi Android.</p><p id="advanced-notification-status" class="mt-2 text-xs text-slate-300"></p><button id="advanced-enable-notifications" type="button" class="mt-3 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200">Aktifkan notifikasi</button>`;
     settings.appendChild(panel);
+    const status = $('advanced-notification-status');
+    const button = $('advanced-enable-notifications');
+    if (status && 'Notification' in window) {
+      status.textContent = Notification.permission === 'granted' ? 'Izin notifikasi sudah aktif.' : Notification.permission === 'denied' ? 'Izin diblokir. Aktifkan dari Pengaturan Android/browser.' : 'Izin notifikasi belum diminta.';
+      if (Notification.permission === 'granted' && button) button.textContent = 'Notifikasi aktif ✓';
+    } else if (status) {
+      status.textContent = 'API notifikasi tidak tersedia di lingkungan aplikasi ini.';
+    }
     $('advanced-enable-notifications').addEventListener('click', requestNotificationPermission);
   }
   function checkReminders() {
