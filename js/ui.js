@@ -242,6 +242,7 @@ function renderTodoList() {
         }
 
         const card = document.createElement('div');
+        card.dataset.taskId = String(task.id);
 
         card.className = `
             bg-slate-800/60
