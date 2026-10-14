@@ -302,9 +302,27 @@
   }
 
   async function requestNotificationPermission() {
-    if (!('Notification' in window)) { alert('Browser ini tidak mendukung notifikasi.'); return; }
-    const permission = await Notification.requestPermission();
-    alert(permission === 'granted' ? 'Izin notifikasi aktif. Pengingat berjalan saat aplikasi terbuka.' : 'Izin notifikasi tidak diberikan.');
+    const status = $('advanced-notification-status');
+    const button = $('advanced-enable-notifications');
+    try {
+      if (!('Notification' in window)) {
+        if (status) status.textContent = 'Notifikasi tidak didukung oleh lingkungan aplikasi ini. Coba buka melalui Chrome.';
+        else alert('Browser ini tidak mendukung notifikasi.');
+        return;
+      }
+      const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
+      if (permission === 'granted') {
+        if (status) status.textContent = 'Izin aktif. Pengingat hanya dicek saat aplikasi terbuka.';
+        if (button) button.textContent = 'Notifikasi aktif ✓';
+        checkReminders();
+      } else {
+        if (status) status.textContent = 'Izin belum diberikan. Periksa izin notifikasi di Pengaturan Android.';
+        else alert('Izin notifikasi belum diberikan.');
+      }
+    } catch (_) {
+      if (status) status.textContent = 'Permintaan izin tidak didukung di WebView ini. Coba gunakan Chrome atau periksa Pengaturan Android.';
+      else alert('Tidak dapat meminta izin notifikasi di aplikasi ini.');
+    }
   }
   function ensureReminderSettings() {
     const settings = $('tab-settings');
@@ -312,7 +330,7 @@
     const panel = document.createElement('section');
     panel.id = 'advanced-reminder-settings';
     panel.className = 'rounded-2xl border border-emerald-400/20 bg-slate-900/80 p-4';
-    panel.innerHTML = `<h2 class="text-sm font-bold text-white">Pengingat browser</h2><p class="mt-1 text-[11px] text-slate-400">Aktifkan izin notifikasi. Pengingat tugas dicek saat Daily Task terbuka.</p><button id="advanced-enable-notifications" type="button" class="mt-3 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200">Aktifkan notifikasi</button>`;
+    panel.innerHTML = `<h2 class="text-sm font-bold text-white">Pengingat browser</h2><p class="mt-1 text-[11px] text-slate-400">Aktifkan izin notifikasi. Pengingat dicek saat Daily Task terbuka. Tidak dijamin berjalan jika aplikasi ditutup.</p><button id="advanced-enable-notifications" type="button" class="mt-3 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200">Aktifkan notifikasi</button>`;
     settings.appendChild(panel);
     $('advanced-enable-notifications').addEventListener('click', requestNotificationPermission);
   }
