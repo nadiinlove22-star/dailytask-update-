@@ -388,7 +388,7 @@
       const meta = document.createElement('p');
       meta.className = 'mt-1 text-[11px] text-slate-500';
       const chars = (note.content || '').length;
-      const links = ((note.content || '').match(/https?:\\/\\//g) || []).length;
+      const links = Math.max(0, ((note.content || '').split('http://').length - 1) + ((note.content || '').split('https://').length - 1));
       meta.textContent = (chars ? chars.toLocaleString('id-ID') + ' karakter' : 'Belum ada isi') + (links ? ' · ' + links + '+ tautan' : '');
       main.append(name, meta);
       const actions = document.createElement('div');
