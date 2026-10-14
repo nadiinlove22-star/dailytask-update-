@@ -66,8 +66,8 @@
   };
 
   function ensureDashboard() {
-    const tasksTab = $('tab-tasks');
-    if (!tasksTab || $('advanced-dashboard')) return;
+    const statsTab = $('tab-stats');
+    if (!statsTab || $('advanced-dashboard')) return;
     const panel = document.createElement('section');
     panel.id = 'advanced-dashboard';
     panel.className = 'rounded-2xl border border-indigo-400/20 bg-gradient-to-br from-slate-900 to-indigo-950/60 p-4 shadow-lg';
@@ -87,8 +87,8 @@
       <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-800"><div id="adv-level-progress" class="h-full rounded-full bg-gradient-to-r from-indigo-400 to-cyan-300" style="width:0%"></div></div>
       <p id="adv-level-caption" class="mt-1 text-[10px] text-slate-400">0 / 100 XP menuju level berikutnya</p>
     `;
-    const first = tasksTab.firstElementChild;
-    tasksTab.insertBefore(panel, first);
+    // Keep the productivity dashboard in Analytics, not above the task list.
+    statsTab.insertBefore(panel, statsTab.firstElementChild);
   }
 
   function renderDashboard() {
