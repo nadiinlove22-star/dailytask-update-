@@ -543,7 +543,10 @@
     // Refresh stats after existing UI actions re-render task DOM.
     const list = $('todo-list');
     if (list && 'MutationObserver' in window) new MutationObserver(decorateTaskList).observe(list, { childList: true, subtree: true });
+    checkReminders();
     setInterval(checkReminders, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
+    window.addEventListener('focus', checkReminders);
     // Keep dashboard XP derived from progress, so cloud restores don't duplicate reward points.
     setInterval(renderDashboard, 30000);
   }
