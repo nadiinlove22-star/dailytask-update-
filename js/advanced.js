@@ -348,6 +348,117 @@
     });
   }
 
+
+  // Notes are stored alongside progress data so they sync through the existing cloud save and backup.
+  function getNotes() {
+    if (typeof progressData === 'undefined' || !progressData) return [];
+    if (!Array.isArray(progressData.__notes)) progressData.__notes = [];
+    return progressData.__notes;
+  }
+  async function saveNotes() {
+    if (typeof progressData !== 'undefined' && progressData) {
+      progressData.__notes = getNotes();
+      if (typeof saveData === 'function') await saveData();
+    }
+    renderNotes();
+  }
+  function renderNotes() {
+    const host = $('notes-list');
+    if (!host) return;
+    host.innerHTML = '';
+    const notes = getNotes();
+    if (!notes.length) {
+      host.innerHTML = '<div class="rounded-xl border border-slate-800 bg-slate-900/50 p-5 text-center text-xs text-slate-500">Belum ada catatan. Tekan “Tambah Catatan” untuk mulai.</div>';
+      return;
+    }
+    notes.forEach((note, index) => {
+      const card = document.createElement('section');
+      card.className = 'rounded-xl border border-slate-800 bg-slate-900/80 p-3 flex items-start gap-2';
+      const main = document.createElement('div');
+      main.className = 'flex-1 min-w-0';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'text-left text-sm font-bold text-emerald-300 hover:text-emerald-200 break-words';
+      copy.textContent = note.name || 'Catatan tanpa nama';
+      copy.title = 'Ketuk untuk menyalin isi catatan';
+      copy.addEventListener('click', () => copyNote(note.id));
+      const preview = document.createElement('p');
+      preview.className = 'mt-1 text-xs text-slate-400 whitespace-pre-wrap break-words';
+      preview.textContent = note.content || '(Isi masih kosong)';
+      main.append(copy, preview);
+      const controls = document.createElement('div');
+      controls.className = 'flex flex-col gap-1';
+      const edit = document.createElement('button');
+      edit.type = 'button'; edit.className = 'rounded bg-slate-800 px-2 py-1 text-xs'; edit.textContent = '✏️';
+      edit.title = 'Edit catatan'; edit.addEventListener('click', () => editNote(note.id));
+      const up = document.createElement('button');
+      up.type = 'button'; up.className = 'rounded bg-slate-800 px-2 py-1 text-xs'; up.textContent = '▲';
+      up.title = 'Pindah ke atas'; up.disabled = index === 0; up.addEventListener('click', () => moveNote(note.id, -1));
+      const down = document.createElement('button');
+      down.type = 'button'; down.className = 'rounded bg-slate-800 px-2 py-1 text-xs'; down.textContent = '▼';
+      down.title = 'Pindah ke bawah'; down.disabled = index === notes.length - 1; down.addEventListener('click', () => moveNote(note.id, 1));
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'rounded bg-rose-900/40 px-2 py-1 text-xs text-rose-300'; del.textContent = '🗑️';
+      del.title = 'Hapus catatan'; del.addEventListener('click', () => deleteNote(note.id));
+      controls.append(edit, up, down, del);
+      card.append(main, controls);
+      host.appendChild(card);
+    });
+  }
+  function addNote() {
+    const name = prompt('Nama catatan:');
+    if (name === null) return;
+    const cleanName = name.trim();
+    if (!cleanName) { alert('Nama catatan tidak boleh kosong.'); return; }
+    const content = prompt('Isi catatan (teks yang akan disalin):', '');
+    if (content === null) return;
+    getNotes().push({ id: Date.now(), name: cleanName, content });
+    saveNotes();
+  }
+  function editNote(id) {
+    const note = getNotes().find(n => String(n.id) === String(id));
+    if (!note) return;
+    const name = prompt('Edit nama catatan:', note.name || '');
+    if (name === null) return;
+    if (!name.trim()) { alert('Nama catatan tidak boleh kosong.'); return; }
+    const content = prompt('Edit isi catatan:', note.content || '');
+    if (content === null) return;
+    note.name = name.trim();
+    note.content = content;
+    saveNotes();
+  }
+  async function copyNote(id) {
+    const note = getNotes().find(n => String(n.id) === String(id));
+    if (!note) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(note.content || '');
+      else {
+        const area = document.createElement('textarea');
+        area.value = note.content || ''; area.style.position = 'fixed'; area.style.opacity = '0';
+        document.body.appendChild(area); area.select();
+        const ok = document.execCommand('copy'); area.remove();
+        if (!ok) throw new Error('copy failed');
+      }
+      alert('Isi catatan "' + note.name + '" berhasil disalin.');
+    } catch (_) { alert('Gagal menyalin. Pastikan izin clipboard browser tersedia.'); }
+  }
+  function moveNote(id, direction) {
+    const notes = getNotes();
+    const i = notes.findIndex(n => String(n.id) === String(id));
+    const j = i + direction;
+    if (i < 0 || j < 0 || j >= notes.length) return;
+    [notes[i], notes[j]] = [notes[j], notes[i]];
+    saveNotes();
+  }
+  function deleteNote(id) {
+    const note = getNotes().find(n => String(n.id) === String(id));
+    if (!note || !confirm('Hapus catatan "' + note.name + '"?')) return;
+    progressData.__notes = getNotes().filter(n => String(n.id) !== String(id));
+    saveNotes();
+  }
+  window.addNote = addNote;
+  window.renderNotes = renderNotes;
+
   function init() {
     if (initialized) return;
     initialized = true;
