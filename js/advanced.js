@@ -522,19 +522,38 @@
   window.saveNoteEditor = saveNoteEditor;
 
   async function copyNote(id) {
-    const note = getNotes().find(n => String(n.id) === String(id));
-    if (!note) return;
+    const index = getNotes().findIndex(n => String(n.id) === String(id));
+    if (index < 0) return;
+    const note = getNotes()[index];
     try {
-      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(note.content || '');
-      else {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(note.content || '');
+      } else {
         const area = document.createElement('textarea');
-        area.value = note.content || ''; area.style.position = 'fixed'; area.style.opacity = '0';
-        document.body.appendChild(area); area.select();
-        const ok = document.execCommand('copy'); area.remove();
+        area.value = note.content || '';
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        area.setAttribute('readonly', '');
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
         if (!ok) throw new Error('copy failed');
       }
-      showNotesFeedback('Isi catatan "' + note.name + '" berhasil disalin.');
-    } catch (_) { showNotesFeedback('Gagal menyalin. Coba gunakan tombol salin dari browser atau periksa izin clipboard.'); }
+
+      // Reorder only after the clipboard operation succeeds.
+      const currentIndex = getNotes().findIndex(n => String(n.id) === String(id));
+      if (currentIndex >= 0 && currentIndex < getNotes().length - 1) {
+        const [copiedNote] = getNotes().splice(currentIndex, 1);
+        getNotes().push(copiedNote);
+        await saveNotes();
+        showNotesFeedback('"' + note.name + '" berhasil disalin dan dipindahkan ke paling bawah.');
+      } else {
+        showNotesFeedback('Isi catatan "' + note.name + '" berhasil disalin.');
+      }
+    } catch (_) {
+      showNotesFeedback('Gagal menyalin. Catatan tidak dipindahkan. Periksa izin clipboard atau coba buka lewat browser.');
+    }
   }
   function moveNote(id, direction) {
     const notes = getNotes();
