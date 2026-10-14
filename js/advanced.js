@@ -368,40 +368,68 @@
     host.innerHTML = '';
     const notes = getNotes();
     if (!notes.length) {
-      host.innerHTML = '<div class="rounded-xl border border-slate-800 bg-slate-900/50 p-5 text-center text-xs text-slate-500">Belum ada catatan. Tekan “Tambah Catatan” untuk mulai.</div>';
+      const empty = document.createElement('div');
+      empty.className = 'rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-6 text-center';
+      empty.innerHTML = '<div class="text-2xl mb-2">📝</div><p class="text-sm font-semibold text-slate-200">Belum ada catatan</p><p class="mt-1 text-xs text-slate-500">Simpan teks dan kumpulan link favoritmu di sini.</p>';
+      host.appendChild(empty);
       return;
     }
     notes.forEach((note, index) => {
       const card = document.createElement('section');
-      card.className = 'rounded-xl border border-slate-800 bg-slate-900/80 p-3 flex items-start gap-2';
+      card.className = 'rounded-2xl border border-slate-800 bg-slate-900/80 p-3 flex items-center gap-3 shadow-sm';
+      const icon = document.createElement('div');
+      icon.className = 'shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-300';
+      icon.textContent = '🗒️';
       const main = document.createElement('div');
       main.className = 'flex-1 min-w-0';
+      const name = document.createElement('p');
+      name.className = 'text-sm font-semibold text-slate-100 break-words';
+      name.textContent = note.name || 'Catatan tanpa nama';
+      const meta = document.createElement('p');
+      meta.className = 'mt-1 text-[11px] text-slate-500';
+      const chars = (note.content || '').length;
+      const links = ((note.content || '').match(/https?:\\/\\//g) || []).length;
+      meta.textContent = (chars ? chars.toLocaleString('id-ID') + ' karakter' : 'Belum ada isi') + (links ? ' · ' + links + '+ tautan' : '');
+      main.append(name, meta);
+      const actions = document.createElement('div');
+      actions.className = 'flex shrink-0 items-center gap-1.5';
       const copy = document.createElement('button');
       copy.type = 'button';
-      copy.className = 'text-left text-sm font-bold text-emerald-300 hover:text-emerald-200 break-words';
-      copy.textContent = note.name || 'Catatan tanpa nama';
-      copy.title = 'Ketuk untuk menyalin isi catatan';
+      copy.className = 'rounded-xl bg-emerald-500/15 border border-emerald-500/25 px-3 py-2 text-xs font-semibold text-emerald-300 active:scale-95';
+      copy.textContent = 'Salin';
+      copy.title = 'Salin seluruh isi catatan';
       copy.addEventListener('click', () => copyNote(note.id));
-      const preview = document.createElement('p');
-      preview.className = 'mt-1 text-xs text-slate-400 whitespace-pre-wrap break-words';
-      preview.textContent = note.content || '(Isi masih kosong)';
-      main.append(copy, preview);
-      const controls = document.createElement('div');
-      controls.className = 'flex flex-col gap-1';
       const edit = document.createElement('button');
-      edit.type = 'button'; edit.className = 'rounded bg-slate-800 px-2 py-1 text-xs'; edit.textContent = '✏️';
-      edit.title = 'Edit catatan'; edit.addEventListener('click', () => editNote(note.id));
-      const up = document.createElement('button');
-      up.type = 'button'; up.className = 'rounded bg-slate-800 px-2 py-1 text-xs'; up.textContent = '▲';
-      up.title = 'Pindah ke atas'; up.disabled = index === 0; up.addEventListener('click', () => moveNote(note.id, -1));
-      const down = document.createElement('button');
-      down.type = 'button'; down.className = 'rounded bg-slate-800 px-2 py-1 text-xs'; down.textContent = '▼';
-      down.title = 'Pindah ke bawah'; down.disabled = index === notes.length - 1; down.addEventListener('click', () => moveNote(note.id, 1));
-      const del = document.createElement('button');
-      del.type = 'button'; del.className = 'rounded bg-rose-900/40 px-2 py-1 text-xs text-rose-300'; del.textContent = '🗑️';
-      del.title = 'Hapus catatan'; del.addEventListener('click', () => deleteNote(note.id));
-      controls.append(edit, up, down, del);
-      card.append(main, controls);
+      edit.type = 'button';
+      edit.className = 'rounded-xl bg-slate-800 px-2.5 py-2 text-xs text-slate-200 active:scale-95';
+      edit.textContent = '✏️';
+      edit.title = 'Edit catatan';
+      edit.addEventListener('click', () => editNote(note.id));
+      const more = document.createElement('details');
+      more.className = 'relative';
+      const summary = document.createElement('summary');
+      summary.className = 'list-none cursor-pointer rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 active:scale-95';
+      summary.textContent = '⋮';
+      const menu = document.createElement('div');
+      menu.className = 'absolute right-0 top-10 z-20 flex min-w-32 flex-col gap-1 rounded-xl border border-slate-700 bg-slate-950 p-1.5 shadow-xl';
+      const makeMenuButton = (label, title, action, disabled) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'rounded-lg px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-30';
+        b.textContent = label;
+        b.title = title;
+        b.disabled = !!disabled;
+        b.addEventListener('click', () => { more.open = false; action(); });
+        return b;
+      };
+      menu.append(
+        makeMenuButton('↑ Pindah ke atas', 'Pindah ke atas', () => moveNote(note.id, -1), index === 0),
+        makeMenuButton('↓ Pindah ke bawah', 'Pindah ke bawah', () => moveNote(note.id, 1), index === notes.length - 1),
+        makeMenuButton('🗑 Hapus', 'Hapus catatan', () => deleteNote(note.id), false)
+      );
+      more.append(summary, menu);
+      actions.append(copy, edit, more);
+      card.append(icon, main, actions);
       host.appendChild(card);
     });
   }
