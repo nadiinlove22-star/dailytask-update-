@@ -8,6 +8,124 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link id="manifest-placeholder" rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b1329">
+
+    <style id="simple-modern-skin">
+        :root {
+            color-scheme: dark;
+            --app-bg: #101412;
+            --surface: #191f1b;
+            --surface-raised: #202722;
+            --line: #303a33;
+            --text-main: #e8eee9;
+            --text-muted: #a2ada5;
+            --accent: #8fc6a1;
+            --accent-deep: #244d35;
+        }
+        html { background: var(--app-bg); }
+        body {
+            background: var(--app-bg) !important;
+            color: var(--text-main) !important;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+            letter-spacing: 0 !important;
+        }
+        header {
+            background: #171d19 !important;
+            border-color: var(--line) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+        }
+        main { gap: .7rem !important; }
+        #tab-tasks > div, #tab-notes > div:not(#note-editor-modal),
+        #tab-calendar > div, #tab-stats > div, #tab-settings > div,
+        #advanced-dashboard, #notes-list > section, #notes-list > div {
+            box-shadow: none !important;
+            background-image: none !important;
+        }
+        #tab-notes > div:first-child, #tab-calendar > div,
+        #tab-stats > div, #tab-settings > div,
+        #advanced-dashboard, #notes-list > section {
+            background-color: var(--surface) !important;
+            border-color: var(--line) !important;
+            border-radius: 14px !important;
+        }
+        #days-bar {
+            background: var(--surface) !important;
+            border-color: var(--line) !important;
+        }
+        #todo-list > *, #calendar-tasks-list > * {
+            box-shadow: none !important;
+        }
+        button {
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #nav-tasks, #nav-notes, #nav-calendar, #nav-stats, #nav-settings {
+            border-radius: 9px !important;
+            font-weight: 500 !important;
+        }
+        nav {
+            background: #171d19 !important;
+            border-color: var(--line) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            padding-bottom: max(.4rem, env(safe-area-inset-bottom)) !important;
+        }
+        input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+        textarea, select {
+            background-color: #111713 !important;
+            border-color: #39443c !important;
+            border-radius: 9px !important;
+            color: var(--text-main) !important;
+            box-shadow: none !important;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: #78a987 !important;
+            outline: none !important;
+            box-shadow: 0 0 0 1px #78a987 !important;
+        }
+        #advanced-dashboard {
+            background: var(--surface) !important;
+        }
+        #advanced-dashboard .bg-gradient-to-br,
+        #advanced-dashboard .bg-gradient-to-r {
+            background-image: none !important;
+        }
+        #note-editor-modal > div, #login-modal > div, #add-modal > div, #edit-modal > div {
+            background: #191f1b !important;
+            border-color: var(--line) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 16px 40px rgba(0,0,0,.28) !important;
+        }
+        .text-emerald-400, .text-emerald-300, .text-emerald-200 {
+            color: var(--accent) !important;
+        }
+        .border-emerald-500\/40, .border-emerald-500\/30, .border-emerald-400\/20 {
+            border-color: #42684d !important;
+        }
+        .bg-emerald-600, .hover\\:bg-emerald-500:hover {
+            background-color: #315b3e !important;
+            color: #f2f7f2 !important;
+        }
+        .bg-emerald-600\\/20, .bg-emerald-500\\/10 {
+            background-color: #1c3325 !important;
+        }
+        .bg-slate-900, .bg-slate-900\\/80, .bg-slate-900\\/60, .bg-slate-900\\/50 {
+            background-color: var(--surface) !important;
+        }
+        .bg-slate-800, .bg-slate-800\\/60, .bg-slate-800\\/50 {
+            background-color: var(--surface-raised) !important;
+        }
+        .border-slate-800, .border-slate-800\\/80, .border-slate-700, .border-slate-700\\/50 {
+            border-color: var(--line) !important;
+        }
+        .text-slate-100 { color: var(--text-main) !important; }
+        .text-slate-400, .text-slate-500 { color: var(--text-muted) !important; }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+        }
+    </style>
+
 </head>
 <body class="bg-[#0b1329] text-slate-100 font-sans select-none min-h-screen flex flex-col justify-between">
     
