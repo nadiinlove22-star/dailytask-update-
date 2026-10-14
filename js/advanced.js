@@ -1,0 +1,374 @@
+/* Daily Task — progressive enhancement module.
+ * Add this script after js/ui.js and before js/app.js.
+ * Uses the existing global tasks/progressData/saveData/Supabase client.
+ */
+(() => {
+  'use strict';
+
+  const XP_PER_TASK = 10;
+  const PRIORITIES = [
+    { value: 'low', label: 'Rendah' },
+    { value: 'medium', label: 'Sedang' },
+    { value: 'high', label: 'Tinggi' }
+  ];
+  let pomo = { timer: null, remaining: 25 * 60, running: false, mode: 'focus' };
+  let lastReminderMinute = '';
+  let initialized = false;
+
+  const $ = (id) => document.getElementById(id);
+  const todayKey = () => {
+    if (typeof getTodayDateString === 'function') return getTodayDateString();
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+  const safeText = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[ch]);
+  const activeTasks = (date = todayKey()) => {
+    if (typeof tasks === 'undefined' || !Array.isArray(tasks)) return [];
+    return tasks.filter(task => {
+      if (!task || (task.createdDate && task.createdDate > date)) return false;
+      if (Array.isArray(task.deletedDates) && task.deletedDates.includes(date)) return false;
+      if (typeof isTaskActiveForDate === 'function') return isTaskActiveForDate(task, date);
+      return true;
+    });
+  };
+  const dayProgress = (date = todayKey()) => (typeof progressData !== 'undefined' && progressData[date]) || {};
+  const isDone = (task, date = todayKey()) => Number(dayProgress(date)[task.id] || 0) >= Math.max(1, Number(task.target || 1));
+  const allCompletionCount = () => {
+    let count = 0;
+    for (const date of Object.keys(typeof progressData !== 'undefined' ? progressData : {})) {
+      const p = progressData[date] || {};
+      for (const task of (typeof tasks !== 'undefined' ? tasks : [])) {
+        if (Number(p[task.id] || 0) >= Math.max(1, Number(task.target || 1))) count++;
+      }
+    }
+    return count;
+  };
+  const currentStreak = () => {
+    let streak = 0;
+    const d = new Date();
+    for (let i = 0; i < 366; i++) {
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const list = activeTasks(key);
+      if (!list.length || !list.every(t => isDone(t, key))) {
+        if (i === 0) { d.setDate(d.getDate() - 1); continue; }
+        break;
+      }
+      streak++;
+      d.setDate(d.getDate() - 1);
+    }
+    return streak;
+  };
+  const persist = async () => {
+    if (typeof saveData === 'function') await saveData();
+    renderDashboard();
+  };
+
+  function ensureDashboard() {
+    const tasksTab = $('tab-tasks');
+    if (!tasksTab || $('advanced-dashboard')) return;
+    const panel = document.createElement('section');
+    panel.id = 'advanced-dashboard';
+    panel.className = 'rounded-2xl border border-indigo-400/20 bg-gradient-to-br from-slate-900 to-indigo-950/60 p-4 shadow-lg';
+    panel.innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div><p class="text-[10px] uppercase tracking-[.2em] text-indigo-300">Ringkasan produktivitas</p>
+        <h2 class="mt-1 text-sm font-bold text-white">Progres kamu</h2></div>
+        <div class="rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-right">
+          <p class="text-[10px] text-amber-200">Total XP</p><p id="adv-xp" class="text-lg font-extrabold text-amber-100">0</p>
+        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-3 gap-2">
+        <div class="rounded-xl bg-slate-950/50 p-3"><p class="text-[10px] text-slate-400">Selesai hari ini</p><p id="adv-done" class="mt-1 text-lg font-bold text-emerald-300">0/0</p></div>
+        <div class="rounded-xl bg-slate-950/50 p-3"><p class="text-[10px] text-slate-400">Level</p><p id="adv-level" class="mt-1 text-lg font-bold text-indigo-200">1</p></div>
+        <div class="rounded-xl bg-slate-950/50 p-3"><p class="text-[10px] text-slate-400">Streak</p><p id="adv-streak" class="mt-1 text-lg font-bold text-orange-200">0 hari</p></div>
+      </div>
+      <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-800"><div id="adv-level-progress" class="h-full rounded-full bg-gradient-to-r from-indigo-400 to-cyan-300" style="width:0%"></div></div>
+      <p id="adv-level-caption" class="mt-1 text-[10px] text-slate-400">0 / 100 XP menuju level berikutnya</p>
+    `;
+    const first = tasksTab.firstElementChild;
+    tasksTab.insertBefore(panel, first);
+  }
+
+  function renderDashboard() {
+    if (!$('advanced-dashboard')) return;
+    const list = activeTasks(todayKey());
+    const done = list.filter(t => isDone(t)).length;
+    const xp = allCompletionCount() * XP_PER_TASK;
+    const level = Math.floor(xp / 100) + 1;
+    const inLevel = xp % 100;
+    $('adv-xp').textContent = String(xp);
+    $('adv-done').textContent = `${done}/${list.length}`;
+    $('adv-level').textContent = String(level);
+    $('adv-streak').textContent = `${currentStreak()} hari`;
+    $('adv-level-progress').style.width = `${inLevel}%`;
+    $('adv-level-caption').textContent = `${inLevel} / 100 XP menuju level ${level + 1}`;
+  }
+
+  function addTaskFields(modalPrefix) {
+    const modal = $(`${modalPrefix}-modal`);
+    if (!modal || $(`${modalPrefix}-advanced-fields`)) return;
+    const targetInput = $(`${modalPrefix}-task-target`);
+    if (!targetInput) return;
+    const host = targetInput.parentElement.parentElement;
+    const fields = document.createElement('div');
+    fields.id = `${modalPrefix}-advanced-fields`;
+    fields.className = 'grid grid-cols-2 gap-2';
+    fields.innerHTML = `
+      <label class="flex flex-col gap-1 text-[11px] text-slate-400">Prioritas
+        <select id="${modalPrefix}-task-priority" class="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white">
+          ${PRIORITIES.map(p => `<option value="${p.value}">${p.label}</option>`).join('')}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-[11px] text-slate-400">Kategori
+        <input id="${modalPrefix}-task-category" maxlength="40" placeholder="Pribadi, kerja..." class="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white">
+      </label>
+      <label class="col-span-2 flex items-center gap-2 text-[11px] text-slate-300">
+        <input id="${modalPrefix}-task-reminder-enabled" type="checkbox" class="accent-emerald-500"> Pengingat browser untuk tugas ini
+      </label>
+      <label class="col-span-2 flex flex-col gap-1 text-[11px] text-slate-400">Jam pengingat (opsional)
+        <input id="${modalPrefix}-task-reminder-time" type="time" class="rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white">
+      </label>`;
+    host.appendChild(fields);
+  }
+
+  function readTaskFields(prefix) {
+    return {
+      priority: $(`${prefix}-task-priority`)?.value || 'medium',
+      category: ($(`${prefix}-task-category`)?.value || '').trim().slice(0, 40),
+      reminderEnabled: Boolean($(`${prefix}-task-reminder-enabled`)?.checked),
+      reminderTime: $(`${prefix}-task-reminder-time`)?.value || ''
+    };
+  }
+  function fillTaskFields(prefix, task) {
+    if ($(`${prefix}-task-priority`)) $(`${prefix}-task-priority`).value = task.priority || 'medium';
+    if ($(`${prefix}-task-category`)) $(`${prefix}-task-category`).value = task.category || '';
+    if ($(`${prefix}-task-reminder-enabled`)) $(`${prefix}-task-reminder-enabled`).checked = Boolean(task.reminderEnabled);
+    if ($(`${prefix}-task-reminder-time`)) $(`${prefix}-task-reminder-time`).value = task.reminderTime || '';
+  }
+
+  function enhanceSaveFunctions() {
+    if (typeof window.saveNewTask === 'function' && !window.saveNewTask.__advancedWrapped) {
+      const original = window.saveNewTask;
+      const wrapped = function() {
+        const extra = readTaskFields('new');
+        const before = (typeof tasks !== 'undefined' ? tasks : []).length;
+        const result = original.apply(this, arguments);
+        const created = (typeof tasks !== 'undefined' ? tasks : []).slice(before);
+        const task = created[created.length - 1];
+        if (task) Object.assign(task, extra);
+        if (task) { persist(); }
+        return result;
+      };
+      wrapped.__advancedWrapped = true;
+      window.saveNewTask = wrapped;
+    }
+    if (typeof window.saveEditTask === 'function' && !window.saveEditTask.__advancedWrapped) {
+      const original = window.saveEditTask;
+      const wrapped = function() {
+        const id = Number($('edit-task-id')?.value);
+        const extra = readTaskFields('edit');
+        const result = original.apply(this, arguments);
+        const task = (typeof tasks !== 'undefined' ? tasks : []).find(t => Number(t.id) === id);
+        if (task) { Object.assign(task, extra); persist(); }
+        return result;
+      };
+      wrapped.__advancedWrapped = true;
+      window.saveEditTask = wrapped;
+    }
+    if (typeof window.openAddModal === 'function' && !window.openAddModal.__advancedWrapped) {
+      const original = window.openAddModal;
+      const wrapped = function() {
+        const result = original.apply(this, arguments);
+        addTaskFields('new');
+        fillTaskFields('new', {});
+        return result;
+      };
+      wrapped.__advancedWrapped = true;
+      window.openAddModal = wrapped;
+    }
+    if (typeof window.openEditModal === 'function' && !window.openEditModal.__advancedWrapped) {
+      const original = window.openEditModal;
+      const wrapped = function() {
+        const result = original.apply(this, arguments);
+        addTaskFields('edit');
+        const id = Number($('edit-task-id')?.value);
+        const task = (typeof tasks !== 'undefined' ? tasks : []).find(t => Number(t.id) === id);
+        fillTaskFields('edit', task || {});
+        return result;
+      };
+      wrapped.__advancedWrapped = true;
+      window.openEditModal = wrapped;
+    }
+  }
+
+  function ensurePomodoro() {
+    if ($('advanced-pomodoro')) return;
+    const settings = $('tab-settings');
+    if (!settings) return;
+    const panel = document.createElement('section');
+    panel.id = 'advanced-pomodoro';
+    panel.className = 'rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-4';
+    panel.innerHTML = `
+      <div class="flex items-center justify-between"><div><p class="text-[10px] uppercase tracking-widest text-cyan-300">Mode fokus</p><h2 class="mt-1 text-sm font-bold text-white">Pomodoro</h2></div><span id="pomo-mode" class="text-[10px] text-slate-400">Fokus</span></div>
+      <p id="pomo-time" class="my-4 text-center font-mono text-4xl font-bold text-cyan-200">25:00</p>
+      <div class="grid grid-cols-3 gap-2">
+        <button id="pomo-start" type="button" class="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950">Mulai</button>
+        <button id="pomo-reset" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs">Reset</button>
+        <button id="pomo-break" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs">Istirahat</button>
+      </div>
+      <p class="mt-2 text-[10px] text-slate-500">Timer berjalan selama halaman tetap terbuka.</p>`;
+    settings.insertBefore(panel, settings.firstChild);
+    $('pomo-start').addEventListener('click', togglePomodoro);
+    $('pomo-reset').addEventListener('click', () => resetPomodoro(pomo.mode));
+    $('pomo-break').addEventListener('click', () => resetPomodoro(pomo.mode === 'focus' ? 'break' : 'focus'));
+    renderPomodoro();
+  }
+  function renderPomodoro() {
+    const time = $('pomo-time');
+    if (!time) return;
+    const m = Math.floor(pomo.remaining / 60).toString().padStart(2, '0');
+    const s = (pomo.remaining % 60).toString().padStart(2, '0');
+    time.textContent = `${m}:${s}`;
+    $('pomo-mode').textContent = pomo.mode === 'focus' ? 'Fokus' : 'Istirahat';
+    $('pomo-start').textContent = pomo.running ? 'Jeda' : 'Mulai';
+    $('pomo-break').textContent = pomo.mode === 'focus' ? 'Istirahat' : 'Kembali fokus';
+  }
+  function resetPomodoro(mode = 'focus') {
+    if (pomo.timer) clearInterval(pomo.timer);
+    pomo.timer = null;
+    pomo.running = false;
+    pomo.mode = mode;
+    pomo.remaining = mode === 'focus' ? 25 * 60 : 5 * 60;
+    renderPomodoro();
+  }
+  function togglePomodoro() {
+    if (pomo.running) {
+      clearInterval(pomo.timer); pomo.timer = null; pomo.running = false; renderPomodoro(); return;
+    }
+    pomo.running = true;
+    pomo.timer = setInterval(() => {
+      pomo.remaining = Math.max(0, pomo.remaining - 1);
+      if (pomo.remaining === 0) {
+        clearInterval(pomo.timer); pomo.timer = null; pomo.running = false;
+        if ('Notification' in window && Notification.permission === 'granted') new Notification('Daily Task', { body: pomo.mode === 'focus' ? 'Sesi fokus selesai. Saatnya istirahat.' : 'Istirahat selesai. Siap fokus lagi?' });
+        alert(pomo.mode === 'focus' ? 'Sesi fokus selesai. Saatnya istirahat!' : 'Istirahat selesai. Siap fokus lagi?');
+      }
+      renderPomodoro();
+    }, 1000);
+    renderPomodoro();
+  }
+
+  function ensureAiAssistant() {
+    if ($('advanced-ai')) return;
+    const settings = $('tab-settings');
+    if (!settings) return;
+    const panel = document.createElement('section');
+    panel.id = 'advanced-ai';
+    panel.className = 'rounded-2xl border border-violet-400/20 bg-slate-900/80 p-4';
+    panel.innerHTML = `
+      <p class="text-[10px] uppercase tracking-widest text-violet-300">Asisten perencanaan</p>
+      <h2 class="mt-1 text-sm font-bold text-white">AI Task Assistant</h2>
+      <p class="mt-1 text-[11px] leading-relaxed text-slate-400">Bantu pecah tujuan menjadi langkah kecil. Perlu Edge Function Supabase <code>daily-task-assistant</code> yang dikonfigurasi dengan kunci API di server.</p>
+      <textarea id="ai-task-prompt" rows="3" maxlength="2000" placeholder="Contoh: bantu susun jadwal belajar 2 jam..." class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 p-3 text-xs text-white"></textarea>
+      <button id="ai-task-submit" type="button" class="mt-2 w-full rounded-lg bg-violet-500 px-3 py-2 text-xs font-bold text-white">Buat rencana</button>
+      <pre id="ai-task-result" class="mt-3 hidden whitespace-pre-wrap break-words rounded-lg bg-slate-950/70 p-3 text-xs text-slate-200"></pre>`;
+    settings.appendChild(panel);
+    $('ai-task-submit').addEventListener('click', requestAiPlan);
+  }
+  async function requestAiPlan() {
+    const prompt = ($('ai-task-prompt')?.value || '').trim();
+    const output = $('ai-task-result');
+    const button = $('ai-task-submit');
+    if (!prompt) { alert('Tulis tujuan atau kendala terlebih dahulu.'); return; }
+    if (typeof supabaseClient === 'undefined' || !supabaseClient || typeof currentUser === 'undefined' || !currentUser) { alert('Login diperlukan untuk menggunakan asisten AI.'); return; }
+    button.disabled = true; button.textContent = 'Menyusun...';
+    output.classList.remove('hidden'); output.textContent = 'Menghubungi asisten...';
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('daily-task-assistant', {
+        body: { prompt: prompt.slice(0, 2000), tasks: (typeof tasks !== 'undefined' ? tasks : []).map(t => ({ title: String(t.title || '').slice(0, 120), priority: t.priority || 'medium', category: t.category || '' })).slice(0, 100) }
+      });
+      if (error) throw error;
+      const answer = data && (data.answer || data.plan || data.message);
+      if (typeof answer !== 'string' || !answer.trim()) throw new Error('Respons AI tidak memiliki field answer/plan/message.');
+      output.textContent = answer;
+    } catch (err) {
+      output.textContent = `Belum siap: ${err.message || 'fungsi AI belum dikonfigurasi'}. Deploy Edge Function daily-task-assistant dan simpan API key sebagai secret di Supabase, bukan di frontend.`;
+    } finally {
+      button.disabled = false; button.textContent = 'Buat rencana';
+    }
+  }
+
+  async function requestNotificationPermission() {
+    if (!('Notification' in window)) { alert('Browser ini tidak mendukung notifikasi.'); return; }
+    const permission = await Notification.requestPermission();
+    alert(permission === 'granted' ? 'Izin notifikasi aktif. Pengingat berjalan saat aplikasi terbuka.' : 'Izin notifikasi tidak diberikan.');
+  }
+  function ensureReminderSettings() {
+    const settings = $('tab-settings');
+    if (!settings || $('advanced-reminder-settings')) return;
+    const panel = document.createElement('section');
+    panel.id = 'advanced-reminder-settings';
+    panel.className = 'rounded-2xl border border-emerald-400/20 bg-slate-900/80 p-4';
+    panel.innerHTML = `<h2 class="text-sm font-bold text-white">Pengingat browser</h2><p class="mt-1 text-[11px] text-slate-400">Aktifkan izin notifikasi. Pengingat tugas dicek saat Daily Task terbuka.</p><button id="advanced-enable-notifications" type="button" class="mt-3 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200">Aktifkan notifikasi</button>`;
+    settings.appendChild(panel);
+    $('advanced-enable-notifications').addEventListener('click', requestNotificationPermission);
+  }
+  function checkReminders() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const now = new Date();
+    const date = todayKey();
+    const minute = `${date} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    if (minute === lastReminderMinute) return;
+    lastReminderMinute = minute;
+    for (const task of activeTasks(date)) {
+      if (task.reminderEnabled && task.reminderTime === minute.slice(11) && !isDone(task, date)) {
+        new Notification('Daily Task — Pengingat', { body: task.title || 'Ada tugas yang menunggu.', tag: `task-${task.id}-${date}` });
+      }
+    }
+  }
+
+  function decorateTaskList() {
+    const container = $('todo-list');
+    if (!container || typeof tasks === 'undefined' || !Array.isArray(tasks)) return;
+    // Add priority chips without rebuilding the existing task renderer.
+    container.querySelectorAll('[data-task-id], [data-id]').forEach(node => {
+      const id = Number(node.getAttribute('data-task-id') || node.getAttribute('data-id'));
+      const task = (typeof tasks !== 'undefined' ? tasks : []).find(t => Number(t.id) === id);
+      if (!task || node.querySelector('.advanced-priority-chip')) return;
+      const titleNode = node.querySelector('.font-medium, .task-title');
+      if (!titleNode) return;
+      const chip = document.createElement('span');
+      chip.className = 'advanced-priority-chip ml-2 rounded px-1.5 py-0.5 text-[9px]';
+      const styles = { high: 'bg-rose-500/15 text-rose-300', medium: 'bg-amber-500/15 text-amber-200', low: 'bg-sky-500/15 text-sky-200' };
+      chip.className += ` ${styles[task.priority] || styles.medium}`;
+      chip.textContent = `${task.priority === 'high' ? 'Prioritas tinggi' : task.priority === 'low' ? 'Prioritas rendah' : 'Prioritas sedang'}${task.category ? ` · ${task.category}` : ''}`;
+      titleNode.appendChild(chip);
+    });
+  }
+
+  function init() {
+    if (initialized) return;
+    initialized = true;
+    ensureDashboard();
+    addTaskFields('new');
+    addTaskFields('edit');
+    enhanceSaveFunctions();
+    ensurePomodoro();
+    ensureAiAssistant();
+    ensureReminderSettings();
+    renderDashboard();
+    decorateTaskList();
+    // Refresh stats after existing UI actions re-render task DOM.
+    const list = $('todo-list');
+    if (list && 'MutationObserver' in window) new MutationObserver(decorateTaskList).observe(list, { childList: true, subtree: true });
+    setInterval(checkReminders, 15000);
+    // Keep dashboard XP derived from progress, so cloud restores don't duplicate reward points.
+    setInterval(renderDashboard, 30000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+  window.addEventListener('load', () => { init(); renderDashboard(); decorateTaskList(); });
+})();
