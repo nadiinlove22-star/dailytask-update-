@@ -405,28 +405,67 @@
       host.appendChild(card);
     });
   }
-  function addNote() {
-    const name = prompt('Nama catatan:');
-    if (name === null) return;
-    const cleanName = name.trim();
-    if (!cleanName) { alert('Nama catatan tidak boleh kosong.'); return; }
-    const content = prompt('Isi catatan (teks yang akan disalin):', '');
-    if (content === null) return;
-    getNotes().push({ id: Date.now(), name: cleanName, content });
-    saveNotes();
+  let editingNoteId = null;
+  function openNoteEditor(note) {
+    const modal = $('note-editor-modal');
+    const nameInput = $('note-editor-name');
+    const contentInput = $('note-editor-content');
+    const title = $('note-editor-title');
+    const error = $('note-editor-error');
+    if (!modal || !nameInput || !contentInput) return;
+    editingNoteId = note ? note.id : null;
+    if (title) title.textContent = note ? 'Edit Catatan' : 'Tambah Catatan';
+    nameInput.value = note ? (note.name || '') : '';
+    contentInput.value = note ? (note.content || '') : '';
+    if (error) { error.textContent = ''; error.classList.add('hidden'); }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => nameInput.focus(), 50);
   }
+  function closeNoteEditor() {
+    const modal = $('note-editor-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    editingNoteId = null;
+  }
+  async function saveNoteEditor() {
+    const nameInput = $('note-editor-name');
+    const contentInput = $('note-editor-content');
+    const error = $('note-editor-error');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const content = contentInput ? contentInput.value : '';
+    if (!name) {
+      if (error) { error.textContent = 'Nama catatan wajib diisi.'; error.classList.remove('hidden'); }
+      return;
+    }
+    const notes = getNotes();
+    if (editingNoteId !== null) {
+      const note = notes.find(n => String(n.id) === String(editingNoteId));
+      if (note) { note.name = name; note.content = content; }
+    } else {
+      notes.push({ id: Date.now(), name, content });
+    }
+    closeNoteEditor();
+    await saveNotes();
+    showNotesFeedback('Catatan berhasil disimpan.');
+  }
+  function showNotesFeedback(message) {
+    const el = $('notes-feedback');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove('hidden');
+  }
+  function addNote() { openNoteEditor(null); }
   function editNote(id) {
     const note = getNotes().find(n => String(n.id) === String(id));
-    if (!note) return;
-    const name = prompt('Edit nama catatan:', note.name || '');
-    if (name === null) return;
-    if (!name.trim()) { alert('Nama catatan tidak boleh kosong.'); return; }
-    const content = prompt('Edit isi catatan:', note.content || '');
-    if (content === null) return;
-    note.name = name.trim();
-    note.content = content;
-    saveNotes();
+    if (note) openNoteEditor(note);
   }
+  window.addNote = addNote;
+  window.renderNotes = renderNotes;
+  window.closeNoteEditor = closeNoteEditor;
+  window.saveNoteEditor = saveNoteEditor;
+
   async function copyNote(id) {
     const note = getNotes().find(n => String(n.id) === String(id));
     if (!note) return;
@@ -439,8 +478,8 @@
         const ok = document.execCommand('copy'); area.remove();
         if (!ok) throw new Error('copy failed');
       }
-      alert('Isi catatan "' + note.name + '" berhasil disalin.');
-    } catch (_) { alert('Gagal menyalin. Pastikan izin clipboard browser tersedia.'); }
+      showNotesFeedback('Isi catatan "' + note.name + '" berhasil disalin.');
+    } catch (_) { showNotesFeedback('Gagal menyalin. Coba gunakan tombol salin dari browser atau periksa izin clipboard.'); }
   }
   function moveNote(id, direction) {
     const notes = getNotes();
@@ -452,7 +491,9 @@
   }
   function deleteNote(id) {
     const note = getNotes().find(n => String(n.id) === String(id));
-    if (!note || !confirm('Hapus catatan "' + note.name + '"?')) return;
+    if (!note) return;
+    const ok = window.confirm ? window.confirm('Hapus catatan "' + note.name + '"?') : false;
+    if (!ok) { showNotesFeedback('Penghapusan dibatalkan.'); return; }
     progressData.__notes = getNotes().filter(n => String(n.id) !== String(id));
     saveNotes();
   }
