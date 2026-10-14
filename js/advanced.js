@@ -289,12 +289,13 @@
       const { data, error } = await supabaseClient.functions.invoke('daily-task-assistant', {
         body: { prompt: prompt.slice(0, 2000), tasks: (typeof tasks !== 'undefined' ? tasks : []).map(t => ({ title: String(t.title || '').slice(0, 120), priority: t.priority || 'medium', category: t.category || '' })).slice(0, 100) }
       });
-      if (error) throw error;
+      if (error) throw new Error('Edge Function belum tersedia atau gagal dihubungi.');
       const answer = data && (data.answer || data.plan || data.message);
       if (typeof answer !== 'string' || !answer.trim()) throw new Error('Respons AI tidak memiliki field answer/plan/message.');
       output.textContent = answer;
     } catch (err) {
-      output.textContent = `Belum siap: ${err.message || 'fungsi AI belum dikonfigurasi'}. Deploy Edge Function daily-task-assistant dan simpan API key sebagai secret di Supabase, bukan di frontend.`;
+      const reason = String(err && err.message ? err.message : 'layanan AI belum tersedia');
+      output.textContent = 'AI online belum terhubung (' + reason + ').\\n\\nRencana sementara:\\n1. Tulis hasil akhir yang ingin dicapai.\\n2. Pecah menjadi tiga langkah kecil.\\n3. Kerjakan langkah pertama selama 25 menit.\\n4. Istirahat 5 menit, lalu lanjutkan langkah berikutnya.\\n5. Evaluasi hasil dan tentukan langkah selanjutnya.\\n\\nUntuk jawaban AI penuh, Edge Function daily-task-assistant harus aktif dan secret OPENAI_API_KEY disetel di Supabase.';
     } finally {
       button.disabled = false; button.textContent = 'Buat rencana';
     }
