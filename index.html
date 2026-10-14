@@ -42,7 +42,17 @@
             </button>
         </div>
 
-        <!-- TAB 2: KALENDER -->
+        <!-- TAB 2: CATATAN -->
+        <div id="tab-notes" class="tab-page hidden flex flex-col gap-3">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                <h2 class="text-sm font-bold text-white">Catatan & Teks Siap Salin</h2>
+                <p class="text-[11px] text-slate-400">Buat nama sesukamu dan simpan teks di dalamnya. Ketuk nama catatan untuk langsung menyalin isinya.</p>
+                <button type="button" onclick="addNote()" class="w-full bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 font-semibold py-2.5 rounded-xl text-xs">+ Tambah Catatan</button>
+            </div>
+            <div id="notes-list" class="flex flex-col gap-2"></div>
+        </div>
+
+        <!-- TAB 3: KALENDER -->
         <div id="tab-calendar" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
                 <label class="text-xs font-semibold text-slate-300">Pilih Tanggal Agenda</label>
@@ -57,7 +67,7 @@
             </div>
         </div>
 
-        <!-- TAB 3: STATISTIK -->
+        <!-- TAB 4: STATISTIK -->
         <div id="tab-stats" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col gap-2">
                 <div class="flex items-center justify-between text-xs">
@@ -98,7 +108,7 @@
             </div>
         </div>
 
-        <!-- TAB 4: PENGATURAN -->
+        <!-- TAB 5: PENGATURAN -->
         <div id="tab-settings" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
                 <h2 class="text-xs font-bold text-white">Akun & Cloud Supabase</h2>
@@ -128,16 +138,19 @@
 
     <!-- Bottom Nav -->
     <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-1.5 z-20 text-[10px]">
-        <button type="button" onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/4 py-1 transition">
+        <button type="button" onclick="switchTab('tasks')" id="nav-tasks" class="flex flex-col items-center justify-center text-emerald-400 font-medium w-1/5 py-1 transition">
             <span class="text-base leading-none mb-0.5">📋</span> Tugas
         </button>
-        <button type="button" onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+        <button type="button" onclick="switchTab('notes')" id="nav-notes" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
+            <span class="text-base leading-none mb-0.5">📝</span> Catatan
+        </button>
+        <button type="button" onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
             <span class="text-base leading-none mb-0.5">📅</span> Kalender
         </button>
-        <button type="button" onclick="switchTab('stats')" id="nav-stats" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+        <button type="button" onclick="switchTab('stats')" id="nav-stats" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
             <span class="text-base leading-none mb-0.5">📊</span> Analitik
         </button>
-        <button type="button" onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/4 py-1 transition">
+        <button type="button" onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
             <span class="text-base leading-none mb-0.5">⚙️</span> Pengaturan
         </button>
     </nav>
