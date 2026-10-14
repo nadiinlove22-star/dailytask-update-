@@ -49,6 +49,21 @@
                 <p class="text-[11px] text-slate-400">Buat nama sesukamu dan simpan teks di dalamnya. Ketuk nama catatan untuk langsung menyalin isinya.</p>
                 <button type="button" onclick="addNote()" class="w-full bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 font-semibold py-2.5 rounded-xl text-xs">+ Tambah Catatan</button>
             </div>
+            <div id="note-editor-modal" class="hidden fixed inset-0 z-50 bg-black/70 p-4 items-center justify-center">
+                <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-4 flex flex-col gap-3">
+                    <h3 id="note-editor-title" class="text-base font-bold text-white">Tambah Catatan</h3>
+                    <label class="text-xs text-slate-300" for="note-editor-name">Nama catatan</label>
+                    <input id="note-editor-name" type="text" maxlength="120" placeholder="Contoh: Prompt video" class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500">
+                    <label class="text-xs text-slate-300" for="note-editor-content">Isi yang akan disalin</label>
+                    <textarea id="note-editor-content" rows="7" placeholder="Tulis atau tempel teks di sini..." class="w-full resize-y rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500"></textarea>
+                    <p id="note-editor-error" class="hidden text-xs text-rose-400"></p>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeNoteEditor()" class="flex-1 rounded-lg bg-slate-800 py-2.5 text-sm text-slate-300">Batal</button>
+                        <button type="button" onclick="saveNoteEditor()" class="flex-1 rounded-lg bg-emerald-600 py-2.5 text-sm font-bold text-white">Simpan</button>
+                    </div>
+                </div>
+            </div>
+            <p id="notes-feedback" class="hidden rounded-lg border border-emerald-700/40 bg-emerald-900/20 p-2 text-xs text-emerald-300"></p>
             <div id="notes-list" class="flex flex-col gap-2"></div>
         </div>
 
