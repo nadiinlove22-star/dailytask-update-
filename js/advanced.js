@@ -466,64 +466,88 @@
     return analysisOcrWorkerPromise;
   }
   function parseAnalysisScreenshotText(text) {
-    const lines = String(text || '').split(/\r?\n/).map(s => s.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const lines = String(text || '').split(/\r?\n/)
+      .map(s => s.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
     const labelRules = {
-      ctr: /\b(?:CTR|click.?through.?rate|rasio klik|rasio klik tayang)\b/i,
+      ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?)\b/i,
       orders: /\b(?:pesanan|orders?|sold|terjual|jumlah penjualan)\b/i,
       creators: /\b(?:kreator|creators?|creator affiliate|jumlah kreator)\b/i,
       cart: /\b(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?)\b/i
     };
-    const numberFromLine = (line, labelRegex, key) => {
-      const label = line.match(labelRegex);
-      if (!label) return null;
-      // Read the number after its own label only, never borrow the next metric's number.
-      const tail = line.slice(label.index + label[0].length);
-      const match = tail.match(/^[^\d%]{0,18}(\d[\d.,]*)(?:\s*([KMB]))?\s*(%?)/i);
+    const metricKeys = Object.keys(labelRules);
+    const parseNumber = (raw) => {
+      const match = String(raw || '').match(/(\d[\d.,]*)(?:\s*([KMB]))?\s*(%?)/i);
       if (!match) return null;
-      if (key === 'ctr' && !match[3] && !/\bCTR\b/i.test(label[0])) {
-        // CTR values are percentages; allow a clearly labeled CTR even when OCR drops %.
-      }
-      let raw = match[1].replace(/\s/g, '');
-      if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) raw = raw.replace(/\./g, '');
-      else if (/^\d{1,3}(?:,\d{3})+$/.test(raw)) raw = raw.replace(/,/g, '');
-      else raw = raw.replace(',', '.');
-      let value = Number(raw);
+      let token = match[1].replace(/\s/g, '');
+      if (/^\d{1,3}(?:\.\d{3})+$/.test(token)) token = token.replace(/\./g, '');
+      else if (/^\d{1,3}(?:,\d{3})+$/.test(token)) token = token.replace(/,/g, '');
+      else token = token.replace(',', '.');
+      let value = Number(token);
       const suffix = String(match[2] || '').toLowerCase();
-      if (suffix === 'k') value *= 1000;
-      else if (suffix === 'm') value *= 1000000;
-      else if (suffix === 'b') value *= 1000000000;
+      if (suffix === 'k') value *= 1e3;
+      if (suffix === 'm') value *= 1e6;
+      if (suffix === 'b') value *= 1e9;
       return Number.isFinite(value) && value >= 0 ? value : null;
     };
-    const findMetric = (key) => {
+    const isOtherMetricLabel = (line, key) => metricKeys.some(other => other !== key && labelRules[other].test(line));
+    const findMetric = key => {
       const rule = labelRules[key];
-      // Prefer the exact OCR line containing the label. Only inspect a following line if it
-      // contains a number and no other metric label, to avoid confusing CTR with orders.
       for (let i = 0; i < lines.length; i++) {
-        if (!rule.test(lines[i])) continue;
-        const value = numberFromLine(lines[i], rule, key);
-        if (value !== null) return value;
-        const next = lines[i + 1] || '';
-        const hasOtherMetric = Object.keys(labelRules).some(other => other !== key && labelRules[other].test(next));
-        if (!hasOtherMetric) {
-          const match = next.match(/^\s*(\d[\d.,]*)(?:\s*([KMB]))?\s*(%?)\s*$/i);
-          if (match) {
-            const synthetic = lines[i] + ' ' + next;
-            const valueNext = numberFromLine(synthetic, rule, key);
-            if (valueNext !== null) return valueNext;
+        const line = lines[i];
+        const label = rule.exec(line);
+        if (!label) continue;
+        // Cut off any later metric on the same OCR line so values cannot bleed between fields.
+        let tail = line.slice(label.index + label[0].length);
+        const nextLabels = metricKeys.map(k => k === key ? null : labelRules[k].exec(tail))
+          .filter(Boolean).sort((a,b) => a.index-b.index);
+        if (nextLabels.length) tail = tail.slice(0, nextLabels[0].index);
+        // Allow punctuation such as "(%)" between the CTR label and its value.
+        const inlineValue = parseNumber(tail);
+        if (inlineValue !== null) return inlineValue;
+        // Some dashboards put the number on the next line. Read only nearby number-only
+        // lines and stop before another metric label or unrelated text.
+        for (let j = i + 1; j <= Math.min(i + 2, lines.length - 1); j++) {
+          const next = lines[j];
+          if (metricKeys.some(k => labelRules[k].test(next))) break;
+          if (/^\s*\d[\d.,]*\s*[KMB]?\s*%?\s*$/i.test(next)) {
+            const value = parseNumber(next);
+            if (value !== null) return value;
           }
+          if (next.length > 35 || /[A-Za-zÀ-ÿ]{3,}/.test(next)) break;
         }
       }
       return null;
     };
-    const ignored = /^(analisa|analisis|tren|trend|statistik|produk|product|tiktok shop|data|7 hari|7 days|overview|ringkasan|performa produk|product performance|produk terlaris)$/i;
-    const metricLine = line => Object.values(labelRules).some(rule => rule.test(line)) ||
-      /\b(?:revenue|pendapatan|klik|views|tayangan|komisi|gmv|conversion|konversi|stok|harga|rp\s?\d)/i.test(line);
-    const candidates = lines.filter(line => line.length >= 4 && line.length <= 160 &&
-      !ignored.test(line) && !metricLine(line) && !/^https?:/i.test(line) &&
-      !/^\d[\d.,]*\s*(?:%|K|M|B)?$/i.test(line));
-    // Product title is usually near the top of the screenshot. Prefer the first plausible
-    // title line instead of any arbitrary text from the whole screenshot.
-    let name = candidates[0] || '';
+
+    const shopBadge = /\b(?:mall|power\s*shop|powershop|beli\s*lokal|belilokal|official\s*store|star\s*shop)\b/i;
+    const ignored = /^(?:analisa|analisis|tren|trend|statistik|produk|product|tiktok shop|data|7 hari|7 days|overview|ringkasan|performa produk|product performance|produk terlaris|mall|power\s*shop|powershop|beli\s*lokal|belilokal|official\s*store|star\s*shop)$/i;
+    const metricLine = line => metricKeys.some(key => labelRules[key].test(line)) ||
+      /\b(?:revenue|pendapatan|klik|views|tayangan|komisi|gmv|conversion|konversi|stok|harga|rp\s?\d|terjual)\b/i.test(line);
+    const plausibleTitle = line => {
+      const clean = String(line || '').replace(/^[•·|\-–—]+\s*/, '').trim();
+      return clean.length >= 4 && clean.length <= 180 &&
+        !ignored.test(clean) && !metricLine(clean) &&
+        !/^https?:/i.test(clean) &&
+        !/^\d[\d.,]*\s*(?:%|K|M|B)?$/i.test(clean) &&
+        !/^(?:Rp\s*)?[\d.,]+(?:\s*(?:rb|ribu|jt|juta))?$/i.test(clean);
+    };
+
+    // On product trend screenshots, the title usually sits immediately after a seller badge
+    // such as Mall, PowerShop, or Beli Lokal. Prefer that line over headings/statistics.
+    let name = '';
+    for (let i = 0; i < lines.length; i++) {
+      if (!shopBadge.test(lines[i])) continue;
+      const remainder = lines[i].replace(shopBadge, '').replace(/^[\s:|·•\-–—]+/, '').trim();
+      if (plausibleTitle(remainder)) { name = remainder; break; }
+      for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
+        if (shopBadge.test(lines[j]) && !plausibleTitle(lines[j])) continue;
+        if (plausibleTitle(lines[j])) { name = lines[j]; break; }
+        if (metricLine(lines[j])) break;
+      }
+      if (name) break;
+    }
+    if (!name) name = lines.find(plausibleTitle) || '';
     name = name.replace(/^[•·|\-–—]+\s*/, '').trim();
     if (name && name === name.toLocaleUpperCase('id-ID') && /[A-ZÀ-Þ]/.test(name)) {
       name = name.toLocaleLowerCase('id-ID').replace(/(^|[\s/\-(])([a-zà-ÿ])/g, (m, lead, letter) => lead + letter.toLocaleUpperCase('id-ID'));
