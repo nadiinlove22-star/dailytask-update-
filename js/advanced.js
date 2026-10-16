@@ -518,8 +518,10 @@
         for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
           const next = lines[j];
           if (metricKeys.some(k => k !== key && labelRules[k].test(next))) break;
+          // Counts are only accepted from a number-only line after a metric label.
+          // OCR lines with other words can contain values from adjacent cards and are unsafe.
           const value = readValue(next);
-          if (value !== null && (key === 'ctr' || /^\s*[\d.,]+\s*[KMB]?\s*%?\s*$/i.test(next) || next.length <= 24)) return value;
+          if (value !== null && (key === 'ctr' || /^\s*[\d.,]+\s*[KMB]?\s*%?\s*$/i.test(next))) return value;
           if (next.length > 45 || /[A-Za-zÀ-ÿ]{3,}/.test(next)) break;
         }
       }
@@ -539,23 +541,20 @@
         !/^(?:Rp\s*)?[\d.,]+(?:\s*(?:rb|ribu|jt|juta))?$/i.test(clean);
     };
 
-    // The product title is in the header area after the seller badge and before "Ringkasan".
-    // Search that whole bounded area rather than only the next three OCR lines.
+    // The product name is the text attached to the seller badge itself, e.g.
+    // "Mall Nama Produk", "PowerShop Nama Produk", or "Beli Lokal Nama Produk".
+    // Do not scan above/below the badge for an unrelated line.
     let name = '';
     for (let i = 0; i < lines.length; i++) {
       if (!shopBadge.test(lines[i])) continue;
-      const remainder = lines[i].replace(shopBadge, '').replace(/^[\s:|·•\-–—]+/, '').trim();
+      const match = lines[i].match(shopBadge);
+      const remainder = match ? (lines[i].slice(match.index + match[0].length).replace(/^[\s:|·•\-–—]+/, '').trim()) : '';
       if (plausibleTitle(remainder)) { name = remainder; break; }
-      const headerCandidates = [];
-      for (let j = i + 1; j < lines.length; j++) {
-        if (/\bringkasan\b/i.test(lines[j])) break;
-        if (shopBadge.test(lines[j])) continue;
-        if (metricLine(lines[j])) break;
-        if (plausibleTitle(lines[j])) headerCandidates.push(lines[j]);
-      }
-      // Usually the title is the last meaningful line before Ringkasan; prefer it to
-      // intermediate seller/UI text if OCR split the header across multiple lines.
-      if (headerCandidates.length) { name = headerCandidates[headerCandidates.length - 1]; break; }
+      // OCR may split the badge and title into two adjacent lines. Only accept the
+      // immediately following line, and never anything after "Ringkasan".
+      const next = lines[i + 1] || '';
+      if (/\bringkasan\b/i.test(next) || shopBadge.test(next) || metricLine(next)) continue;
+      if (plausibleTitle(next)) { name = next; break; }
     }
     // Never guess the product name from an arbitrary line: this was filling headings or labels as the title.
     name = name.replace(/^[•·|\-–—]+\s*/, '').trim();
