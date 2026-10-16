@@ -5,7 +5,7 @@ let progressData = {};
 
 async function saveData() {
     const syncBadge = document.getElementById('sync-status');
-    if (!currentUser || !supabaseClient) return;
+    if (!currentUser || !supabaseClient) return false;
 
     if (syncBadge) syncBadge.innerText = "● Syncing...";
 
@@ -23,11 +23,14 @@ async function saveData() {
         if (error) {
             console.error('Gagal sync:', error.message);
             if (syncBadge) syncBadge.innerText = "● Sync Error";
+            return false;
         } else {
             if (syncBadge) syncBadge.innerText = "● Cloud Synced";
+            return true;
         }
     } catch (err) {
         if (syncBadge) syncBadge.innerText = "● Offline";
+        return false;
     }
 }
 
@@ -98,25 +101,38 @@ function backupToInternalStorage() {
     }
 }
 
-function restoreFromInternalStorage(event) {
-    const file = event.target.files[0];
+async function restoreFromInternalStorage(event) {
+    const file = event && event.target && event.target.files && event.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const content = JSON.parse(e.target.result);
-            if (content.tasks && content.progress) {
-                tasks = content.tasks;
-                progressData = content.progress;
-                await saveData();
-                updateUserInfo();
-                renderTodoList();
-                alert("Data berhasil dipulihkan!");
-            } else { alert("Format file JSON tidak valid."); }
-        } catch (err) { alert("Gagal membaca file."); }
-        event.target.value = '';
-    };
-    reader.readAsText(file);
+    const input = event.target;
+    try {
+        const content = JSON.parse(await file.text());
+        if (!content || !Array.isArray(content.tasks) || !content.progress || typeof content.progress !== 'object' || Array.isArray(content.progress)) {
+            throw new Error('Format backup tidak cocok. Gunakan file JSON dari fitur Backup Daily Task.');
+        }
+        if (!confirm('Pulihkan ' + content.tasks.length + ' tugas dan riwayat progres dari backup? Data saat ini akan diganti.')) return;
+        const previous = { tasks, progressData };
+        tasks = content.tasks;
+        progressData = content.progress;
+        const saved = await saveData();
+        if (currentUser && supabaseClient && saved !== true) {
+            tasks = previous.tasks;
+            progressData = previous.progressData;
+            throw new Error('Backup gagal disimpan ke cloud. Data sebelumnya dikembalikan; periksa koneksi dan coba lagi.');
+        }
+        updateUserInfo();
+        renderDaysBar();
+        changeDay(selectedDay);
+        if (typeof renderNotes === 'function') renderNotes();
+        if (typeof renderStatsTab === 'function') renderStatsTab();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof renderFocusTab === 'function') renderFocusTab();
+        alert('Pemulihan selesai: ' + tasks.length + ' tugas dan riwayat progres berhasil dimuat.');
+    } catch (err) {
+        alert('Pemulihan gagal: ' + (err && err.message ? err.message : 'File tidak bisa dibaca.'));
+    } finally {
+        if (input) input.value = '';
+    }
 }
 
 async function resetAllData() {
