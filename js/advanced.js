@@ -604,6 +604,8 @@
       // Match each distinctive fragment so the bottom-right card still gets an anchor.
       cart:/\b(?:pembeli|menambahkan|memasukkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
+    // Keep this filter local to the layout parser; it runs independently from the text parser.
+    const unrelatedMetric = /\b(?:views?|tayangan|ditonton|penayangan|video|likes?|suka|komentar|comments?|shares?|dibagikan|impressions?|jangkauan|kreator\s+challenge|tren\s+produk|7\s+hari\s+terakhir)\b/i;
     const parseNum=(text,key)=>{
       const src=String(text||'');
       const m=key==='ctr'?src.match(/(\d[\d.,]*)\s*(?:%|％)/):src.match(/(\d[\d.,]*)(?:\s*([KMB]))?/i);
