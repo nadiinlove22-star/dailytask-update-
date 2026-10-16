@@ -221,32 +221,36 @@
   function hasMetric(value) { return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0; }
   function productScore(product) {
     const t = product && product.trend || {};
-    const hasCtr = hasMetric(t.ctr), hasOrders = hasMetric(t.orders), hasCreators = hasMetric(t.creators), hasCart = hasMetric(t.cart);
+    const hasCtr = hasMetric(t.ctr);
+    const hasOrders = hasMetric(t.orders);
+    const hasCreators = hasMetric(t.creators);
+    const hasCart = hasMetric(t.cart);
     if (!(hasCtr || hasOrders || hasCreators || hasCart)) return null;
+
+    // Bobot disamakan dengan keterangan UI: pesanan 40%, CTR 25%, kreator 15%, add-to-cart 20%.
+    // Metrik yang belum diisi tidak dianggap nol; bobot dinormalisasi hanya dari data yang tersedia.
     let score = 0, totalWeight = 0;
+    if (hasOrders) {
+      const volume = Math.min(100, Math.round(Math.log10(Number(t.orders) + 1) / 4 * 100));
+      score += volume * 0.40;
+      totalWeight += 0.40;
+    }
     if (hasCtr) {
       const ctr = Number(t.ctr);
-      score += (ctr >= 3.5 ? 100 : ctr >= 2.0 ? 70 : 40) * 0.35;
-      totalWeight += 0.35;
-    }
-    if (hasCart && hasOrders) {
-      const ratio = Number(t.orders) > 0 ? Number(t.cart) / Number(t.orders) : (Number(t.cart) > 0 ? Infinity : 0);
-      score += (ratio >= 1.5 ? 100 : ratio >= 1.0 ? 70 : 40) * 0.30;
-      totalWeight += 0.30;
-    }
-    if (hasOrders) {
-      // Base volume score: capped logarithmic scale, plus 30 bonus points when the product records rising orders.
-      const volume = Math.min(100, Math.round(Math.log10(Number(t.orders) + 1) / 4 * 100));
-      const rising = Number(t.orderChange ?? t.ordersTrend ?? t.orderGrowth ?? 0) > 0 || t.trendDirection === 'up' || t.trendDirection === 'naik';
-      score += Math.min(100, volume + (rising ? 30 : 0)) * 0.20;
-      totalWeight += 0.20;
+      score += (ctr >= 3.5 ? 100 : ctr >= 2.0 ? 70 : 40) * 0.25;
+      totalWeight += 0.25;
     }
     if (hasCreators) {
+      // Jumlah kreator dipakai sebagai proksi tingkat persaingan, bukan ukuran penjualan.
       score += (Number(t.creators) < 500 ? 100 : 60) * 0.15;
       totalWeight += 0.15;
     }
-    // Only metrics actually supplied count toward the denominator; missing metrics are not silently treated as poor performance.
-    return totalWeight ? Math.round(score / totalWeight * 100) / 1 : null;
+    if (hasCart) {
+      const cartVolume = Math.min(100, Math.round(Math.log10(Number(t.cart) + 1) / 4 * 100));
+      score += cartVolume * 0.20;
+      totalWeight += 0.20;
+    }
+    return totalWeight ? Math.round(score / totalWeight) : null;
   }
   function productStatus(score) {
     if (score === null) return { label: 'Data belum diinput', color: 'text-amber-300', note: 'Masukkan metrik untuk menilai produk' };
@@ -375,6 +379,7 @@
       const u = new URL(url);
       const parts = u.pathname.split('/').filter(Boolean);
       let candidate = decodeURIComponent(parts[parts.length-1] || '').replace(/[-_]+/g,' ').replace(/\.(html?|php)$/i,'').replace(/\?.*$/,'').trim();
+      candidate = candidate.replace(/\b(?:product|item|goods)\s*\d+\b/ig, '').replace(/\b\d{8,}\b/g, '').replace(/\s+/g, ' ').trim();
       if (/^product\s*\d+$/i.test(candidate) || /^\d+$/.test(candidate) || candidate.length < 3) candidate = '';
       return candidate.slice(0,120);
     } catch (_) { return ''; }
