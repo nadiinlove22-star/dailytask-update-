@@ -1010,7 +1010,7 @@ function switchTab(tabName) {
         targetTab.classList.remove('hidden');
     }
 
-    ['tasks', 'notes', 'focus', 'stats', 'settings'].forEach(n => {
+    ['tasks', 'notes', 'analysis', 'stats', 'settings'].forEach(n => {
 
         const btn = document.getElementById(`nav-${n}`);
 
@@ -1031,8 +1031,8 @@ function switchTab(tabName) {
         if (typeof renderNotes === 'function') renderNotes();
     }
 
-    if (tabName === 'focus' && typeof renderFocusTab === 'function') {
-        renderFocusTab();
+    if (tabName === 'analysis' && typeof renderAnalysisTab === 'function') {
+        renderAnalysisTab();
     }
 
     if (tabName === 'stats') {
