@@ -477,7 +477,7 @@
       cart: /\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
     const metricKeys = Object.keys(labelRules);
-    const unrelatedMetric = /\\b(?:views?|tayangan|ditonton|penayangan|video|likes?|suka|komentar|comments?|shares?|dibagikan|impressions?|jangkauan)\\b/i;
+    const unrelatedMetric = /\b(?:views?|tayangan|ditonton|penayangan|video|likes?|suka|komentar|comments?|shares?|dibagikan|impressions?|jangkauan)\b/i;
     const parseNumber = raw => {
       const match = String(raw || '').match(/(\d[\d.,]*)(?:\s*([KMB]))?\s*(%|％)?/i);
       if (!match) return null;
