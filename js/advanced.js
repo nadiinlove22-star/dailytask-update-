@@ -400,9 +400,17 @@
   }
   async function addProductFromPastedLink() {
     const input = $('analysis-paste-url'), feedback = $('analysis-paste-feedback');
-    const url = safeProductUrl(input && input.value);
+    const pastedText = String(input && input.value || '').replace(/\s+/g, ' ').trim();
+    // Clipboard text can contain both a product title and URL; separate them before validating.
+    const urlMatch = pastedText.match(/https?:\/\/[^\s<>"']+/i);
+    const extractedUrl = urlMatch ? urlMatch[0].replace(/[),.;]+$/, '') : pastedText;
+    const url = safeProductUrl(extractedUrl);
+    const titleBeforeUrl = urlMatch ? pastedText.slice(0, pastedText.indexOf(urlMatch[0])).trim() : '';
+    const pastedName = titleBeforeUrl
+      .replace(/^[\s|—–:-]+|[\s|—–:-]+$/g, '')
+      .split(/\s+/).filter(Boolean).slice(0, 4).join(' ');
     const say = (message, kind='text-slate-500') => { if(feedback){feedback.textContent=message;feedback.className='mt-2 text-[10px] '+kind;} };
-    if (!url) { say('Tempel link produk HTTPS yang valid dulu.', 'text-rose-400'); return; }
+    if (!url) { say('Tempel teks nama produk beserta link HTTPS, atau link produk HTTPS yang valid.', 'text-rose-400'); return; }
     const existing = getAnalysisProducts().find(p => safeProductUrl(p.url) === url);
     if (existing) { say('Link ini sudah ada di daftar. Membuka edit produk.', 'text-amber-300'); openProductEditor(existing.id); return; }
     const button = document.querySelector('button[onclick="addProductFromPastedLink()"]');
@@ -423,7 +431,7 @@
       if (!title || /security check|verify (that )?you are human|captcha|access denied|just a moment|checking your browser|robot or human|periksa keamanan|verifikasi keamanan/i.test(title)) return '';
       return title;
     };
-    const productTitle = cleanTitle(metadata && metadata.title) || cleanTitle(guessedName);
+    const productTitle = cleanTitle(pastedName) || cleanTitle(metadata && metadata.title) || cleanTitle(guessedName);
     const item = {
       id:'prod-'+Date.now(),
       name:productTitle || 'Nama produk belum terbaca',
@@ -446,7 +454,7 @@
     closeAddProductModal();
     renderAnalysisTab();
     if (productTitle) {
-      say(metadata && cleanTitle(metadata.title) ? 'Nama produk berhasil dibaca dari metadata halaman. Statistik performa belum diambil otomatis.' : 'Nama diambil dari teks link, bukan diverifikasi dari halaman. Statistik performa belum diambil otomatis.', 'text-emerald-300');
+      say(pastedName ? 'Nama dan link berhasil dipisahkan otomatis. Nama diambil maksimal 4 kata dari teks sebelum link.' : (metadata && cleanTitle(metadata.title) ? 'Nama produk berhasil dibaca dari metadata halaman. Statistik performa belum diambil otomatis.' : 'Nama diambil dari metadata atau link, bukan diverifikasi dari halaman. Statistik performa belum diambil otomatis.'), 'text-emerald-300');
     } else {
       say('TikTok menampilkan Security Check atau tidak memberikan nama produk. Link tersimpan, tetapi nama tidak ditebak. Buka Edit produk dan isi nama yang benar. '+(metadataError ? metadataError+' ' : '')+'CTR, pesanan, add-to-cart, dan kreator belum terhubung ke sumber data resmi.', 'text-amber-300');
       openProductEditor(item.id);
