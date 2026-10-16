@@ -576,10 +576,43 @@
     say('Sedang membaca teks screenshot di perangkat ini. Proses pertama bisa memerlukan waktu.');
     try {
       const Tesseract = await loadAnalysisOcr();
-      const result = await Tesseract.recognize(file, 'ind+eng', {
+      // Upscale and boost contrast so small dashboard text is easier to recognize.
+      let ocrSource = file;
+      try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(3, Math.max(2, 1800 / Math.max(bitmap.width, bitmap.height)));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        for (let p = 0; p < pixels.data.length; p += 4) {
+          const gray = 0.299 * pixels.data[p] + 0.587 * pixels.data[p + 1] + 0.114 * pixels.data[p + 2];
+          const contrast = Math.max(0, Math.min(255, (gray - 128) * 1.35 + 128));
+          pixels.data[p] = pixels.data[p + 1] = pixels.data[p + 2] = contrast;
+        }
+        ctx.putImageData(pixels, 0, 0);
+        ocrSource = canvas;
+        if (bitmap.close) bitmap.close();
+      } catch (preprocessError) {
+        console.warn('OCR preprocessing dilewati; memakai gambar asli.', preprocessError);
+      }
+      let result = await Tesseract.recognize(ocrSource, 'ind+eng', {
         logger: m => { if(status && m.status) status.textContent = m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
       });
-      const parsed = parseAnalysisScreenshotText(result && result.data && result.data.text);
+      let rawOcrText = result && result.data && result.data.text || '';
+      if (rawOcrText.trim().length < 8) {
+        if (status) status.textContent = 'Mencoba pembacaan alternatif…';
+        result = await Tesseract.recognize(ocrSource, 'eng', {
+          logger: m => { if(status && m.status) status.textContent = 'Mode alternatif: ' + m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
+        });
+        const fallbackText = result && result.data && result.data.text || '';
+        if (fallbackText.trim().length > rawOcrText.trim().length) rawOcrText = fallbackText;
+      }
+      const parsed = parseAnalysisScreenshotText(rawOcrText);
       closeAddProductModal();
       const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
       if (existing) openProductEditor(existing.id);
@@ -598,7 +631,13 @@
       const message = (found.length ? 'Terbaca: ' + found.join(', ') + '. Periksa hasilnya lalu tekan Simpan.' : 'Gambar berhasil dibaca, tetapi nama/metrik belum dikenali. Isi atau koreksi formulir secara manual sebelum menyimpan.') + (productUrl ? '' : ' Link produk belum diisi; tempel link di formulir sebelum menyimpan.');
       if (status) status.textContent = message;
       say(message, found.length ? 'text-emerald-300' : 'text-amber-300');
-      if (!found.length) $('product-editor-error').textContent = 'OCR belum menemukan metrik yang dikenali. Periksa dan isi data dari screenshot secara manual.';
+      if (!found.length) {
+        const sample = rawOcrText.trim().replace(/\\s+/g, ' ').slice(0, 220);
+        const diagnostic = sample ? ' Teks yang terbaca OCR: "' + sample + '".' : ' OCR tidak menghasilkan teks. Periksa apakah gambar jelas dan pustaka OCR selesai dimuat.';
+        $('product-editor-error').textContent = 'OCR belum menemukan nama atau metrik yang dikenali.' + diagnostic;
+        $('product-editor-error').classList.remove('hidden');
+        if (status) status.textContent = 'OCR selesai, tetapi data belum dikenali. Detail diagnostik ditampilkan di formulir.';
+      }
     } catch (e) {
       console.error('OCR screenshot gagal:', e);
       const message = String(e && e.message || 'OCR gagal membaca gambar.');
