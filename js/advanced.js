@@ -574,6 +574,109 @@
     }
     return { name, orders: findMetric('orders'), ctr: findMetric('ctr'), creators: findMetric('creators'), cart: findMetric('cart') };
   }
+  // Prefer OCR word coordinates over flattened text: metric cards are arranged in a 2x2 grid,
+  // so their values must be matched to labels in the same horizontal card.
+  function parseAnalysisScreenshotLayout(data) {
+    const words = (data && data.words || []).filter(w =>
+      w && String(w.text || '').trim() && w.bbox &&
+      Number.isFinite(w.bbox.x0) && Number.isFinite(w.bbox.x1) &&
+      Number.isFinite(w.bbox.y0) && Number.isFinite(w.bbox.y1));
+    if (words.length < 4) return null;
+    const rows = [];
+    [...words].sort((a,b) => ((a.bbox.y0+a.bbox.y1)/2)-((b.bbox.y0+b.bbox.y1)/2) || a.bbox.x0-b.bbox.x0)
+      .forEach(word => {
+        const cy = (word.bbox.y0 + word.bbox.y1) / 2;
+        let row = rows.find(r => Math.abs(r.cy-cy) <= Math.max(8, (word.bbox.y1-word.bbox.y0)*0.65));
+        if (!row) { row={cy, words:[]}; rows.push(row); }
+        row.words.push(word);
+        row.cy = row.words.reduce((sum,w)=>sum+(w.bbox.y0+w.bbox.y1)/2,0)/row.words.length;
+      });
+    rows.sort((a,b)=>a.cy-b.cy);
+    rows.forEach(row => {
+      row.words.sort((a,b)=>a.bbox.x0-b.bbox.x0);
+      row.text = row.words.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim();
+      row.x0 = Math.min(...row.words.map(w=>w.bbox.x0));
+      row.x1 = Math.max(...row.words.map(w=>w.bbox.x1));
+    });
+    const rules = {
+      orders: /\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
+      ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
+      creators: /\b(?:jumlah\s+kreator|jumlah\s+creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
+      cart: /\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|pembeli\s+memasukkan\s+ke\s+keranjang|add.?to.?cart|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
+    };
+    const numberFrom = (text, key) => {
+      const source = String(text || '');
+      const m = key === 'ctr' ? source.match(/(\d[\d.,]*)\s*(?:%|％)/) : source.match(/(?:^|\s)(\d[\d.,]*)(?:\s*([KMB]))?(?:\s|$)/i);
+      if (!m) return null;
+      let token=m[1];
+      if (/^\d{1,3}(?:\.\d{3})+$/.test(token)) token=token.replace(/\./g,'');
+      else if (/^\d{1,3}(?:,\d{3})+$/.test(token)) token=token.replace(/,/g,'');
+      else token=token.replace(',','.');
+      let n=Number(token), suffix=String(m[2]||'').toLowerCase();
+      if (suffix==='k') n*=1000; if(suffix==='m') n*=1000000; if(suffix==='b') n*=1000000000;
+      return Number.isFinite(n) ? n : null;
+    };
+    const parsed={orders:null,ctr:null,creators:null,cart:null};
+    const labels=[];
+    rows.forEach((row,ri) => {
+      for (const key of Object.keys(rules)) {
+        const match=rules[key].exec(row.text);
+        if (!match) continue;
+        const labelWords=row.words.filter(w => rules[key].test(w.text));
+        // For multi-word labels use the horizontal span of the whole row as a fallback.
+        const x0=labelWords.length ? Math.min(...labelWords.map(w=>w.bbox.x0)) : row.x0;
+        const x1=labelWords.length ? Math.max(...labelWords.map(w=>w.bbox.x1)) : Math.min(row.x1,x0+row.x1*0.35);
+        labels.push({key,ri,row,x:(x0+x1)/2});
+        const inline=numberFrom(row.text.slice(match.index+match[0].length),key);
+        if (inline!==null) parsed[key]=inline;
+      }
+    });
+    // Find the nearest numeric row below each label, constrained to its own half/card.
+    labels.forEach(label => {
+      if (parsed[label.key]!==null) return;
+      const otherXs=labels.filter(l=>l.ri===label.ri && l.key!==label.key).map(l=>l.x);
+      const nearestOther=otherXs.length ? Math.min(...otherXs.map(x=>Math.abs(x-label.x))) : Infinity;
+      for (let ri=label.ri+1; ri<Math.min(rows.length,label.ri+5); ri++) {
+        const row=rows[ri];
+        if (Object.values(rules).some(rule=>rule.test(row.text))) break;
+        const n=numberFrom(row.text,label.key);
+        if (n===null) continue;
+        const rowX=(row.x0+row.x1)/2;
+        if (nearestOther!==Infinity && Math.abs(rowX-label.x)>=nearestOther) continue;
+        if (label.key==='ctr' && !/%|％/.test(row.text)) continue;
+        if (/[A-Za-zÀ-ÿ]{3,}/.test(row.text) && !/%|％/.test(row.text)) continue;
+        parsed[label.key]=n; break;
+      }
+    });
+    const allText=rows.map(r=>r.text);
+    const summary=allText.findIndex(t=>/\bringkasan\b/i.test(t));
+    let name='';
+    const badge=/\b(?:mall|power\s*shop|powershop|beli\s*lokal|belilokal|official\s*store|star\s*shop)\b/i;
+    if(summary>=0) {
+      for(let i=summary;i<rows.length;i++) {
+        const row=rows[i], m=badge.exec(row.text);
+        if(!m) continue;
+        const after=row.text.slice(m.index+m[0].length).replace(/^[\s:|·•\-–—]+/,'').trim();
+        if(after.length>=4 && !Object.values(rules).some(r=>r.test(after))) { name=after; break; }
+        // If the badge and title are on the same visual row but OCR separated them,
+        // take words to the right of the badge's bounding box.
+        const badgeWord=row.words.find(w=>badge.test(w.text));
+        if(badgeWord) {
+          const right=row.words.filter(w=>w.bbox.x0>=badgeWord.bbox.x1-2).map(w=>w.text).join(' ').trim();
+          if(right.length>=4 && !Object.values(rules).some(r=>r.test(right))) { name=right; break; }
+        }
+        for(let j=i+1;j<=Math.min(i+2,rows.length-1);j++) {
+          const t=rows[j].text;
+          if(badge.test(t)||Object.values(rules).some(r=>r.test(t))||/\bringkasan\b/i.test(t)) break;
+          if(t.length>=4 && t.length<=180 && !/^\d[\d.,]*$/.test(t)) { name=t; break; }
+        }
+        if(name) break;
+      }
+    }
+    name=name.replace(/^[•·|\-–—]+/,'').trim();
+    return {name, ...parsed};
+  }
+
   async function readAnalysisScreenshot() {
     const fileInput = $('analysis-screenshot');
     const file = fileInput && fileInput.files && fileInput.files[0];
@@ -610,7 +713,9 @@
         const fallbackText = result && result.data && result.data.text || '';
         if (fallbackText.trim().length > rawOcrText.trim().length) rawOcrText = fallbackText;
       }
-      const parsed = parseAnalysisScreenshotText(rawOcrText);
+      // Use spatial word boxes for the 2x2 metric cards; fall back to text-only parsing
+      // only when this OCR engine did not return usable coordinates.
+      const parsed = parseAnalysisScreenshotLayout(result && result.data) || parseAnalysisScreenshotText(rawOcrText);
       closeAddProductModal();
       const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
       if (existing) openProductEditor(existing.id);
