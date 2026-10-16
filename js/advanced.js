@@ -576,37 +576,15 @@
     say('Sedang membaca teks screenshot di perangkat ini. Proses pertama bisa memerlukan waktu.');
     try {
       const Tesseract = await loadAnalysisOcr();
-      // Upscale and boost contrast so small dashboard text is easier to recognize.
-      let ocrSource = file;
-      try {
-        const bitmap = await createImageBitmap(file);
-        const scale = Math.min(3, Math.max(2, 1800 / Math.max(bitmap.width, bitmap.height)));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(bitmap.width * scale);
-        canvas.height = Math.round(bitmap.height * scale);
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        for (let p = 0; p < pixels.data.length; p += 4) {
-          const gray = 0.299 * pixels.data[p] + 0.587 * pixels.data[p + 1] + 0.114 * pixels.data[p + 2];
-          const contrast = Math.max(0, Math.min(255, (gray - 128) * 1.35 + 128));
-          pixels.data[p] = pixels.data[p + 1] = pixels.data[p + 2] = contrast;
-        }
-        ctx.putImageData(pixels, 0, 0);
-        ocrSource = canvas;
-        if (bitmap.close) bitmap.close();
-      } catch (preprocessError) {
-        console.warn('OCR preprocessing dilewati; memakai gambar asli.', preprocessError);
-      }
-      let result = await Tesseract.recognize(ocrSource, 'ind+eng', {
+      // Gunakan file asli terlebih dahulu. Pemrosesan grayscale/upscale sebelumnya
+      // berisiko merusak teks kecil pada screenshot berwarna; pertahankan fallback bahasa.
+      let result = await Tesseract.recognize(file, 'ind+eng', {
         logger: m => { if(status && m.status) status.textContent = m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
       });
       let rawOcrText = result && result.data && result.data.text || '';
       if (rawOcrText.trim().length < 8) {
         if (status) status.textContent = 'Mencoba pembacaan alternatif…';
-        result = await Tesseract.recognize(ocrSource, 'eng', {
+        result = await Tesseract.recognize(file, 'eng', {
           logger: m => { if(status && m.status) status.textContent = 'Mode alternatif: ' + m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
         });
         const fallbackText = result && result.data && result.data.text || '';
