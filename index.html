@@ -194,6 +194,14 @@
                 </div>
                 <p class="mt-2 text-[10px] text-slate-500">Skor otomatis: pesanan 40%, CTR 25%, kreator 15%, tambah keranjang 20%. Produk tanpa data lengkap ditampilkan terpisah.</p>
             </section>
+            <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                <label for="analysis-paste-url" class="mb-2 block text-[11px] font-semibold text-slate-300">Tempel link produk</label>
+                <div class="flex min-w-0 gap-2">
+                    <input id="analysis-paste-url" type="url" inputmode="url" placeholder="https://..." class="min-w-0 flex-1 rounded-lg border border-slate-700 px-3 py-2.5 text-xs text-white">
+                    <button type="button" onclick="addProductFromPastedLink()" class="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Tambah</button>
+                </div>
+                <p id="analysis-paste-feedback" class="mt-2 text-[10px] text-slate-500">Tempel sekali, link langsung masuk daftar. Nama diambil dari link jika memungkinkan.</p>
+            </div>
             <div id="analysis-summary" class="text-[11px] text-slate-400"></div>
             <div id="analysis-products-list" class="flex flex-col gap-2"></div>
             <div id="product-editor-modal" class="hidden fixed inset-0 z-50 bg-black/75 p-3 items-center justify-center overflow-y-auto">
@@ -388,11 +396,11 @@
     </div>
 
     <!-- Urutan Import Harus Sesuai Dependensi -->
-<script src="js/config.js?v=20261016-3"></script>
-<script src="js/storage.js?v=20261016-3"></script>
-<script src="js/ui.js?v=20261016-3"></script>
-<script src="js/advanced.js?v=20261016-3"></script>
-<script src="js/app.js?v=20261016-3"></script>
+<script src="js/config.js?v=20261016-4"></script>
+<script src="js/storage.js?v=20261016-4"></script>
+<script src="js/ui.js?v=20261016-4"></script>
+<script src="js/advanced.js?v=20261016-4"></script>
+<script src="js/app.js?v=20261016-4"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
