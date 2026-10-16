@@ -773,7 +773,7 @@
       // and are surfaced for review. Text-only parsing is used only when coordinates
       // are unavailable altogether.
       const parsed = positioned || textParsed;
-      const creatorCartPattern = rawOcrText.match(/(?:jumlah\\s+kreator|jumlah\\s+creator)[\\s\\S]{0,90}?(\\d{2,4})\\s+keranjang/i);
+      const creatorCartPattern = rawOcrText.match(/(?:jumlah\s+kreator|jumlah\s+creator)[\s\S]{0,90}?(\d{2,4})\s+keranjang/i);
       if (creatorCartPattern) {
         const candidate = Number(creatorCartPattern[1]);
         if (Number.isInteger(candidate) && candidate >= 1) parsed.creators = candidate;
@@ -783,12 +783,12 @@
         if (headerParsed.name) parsed.name = headerParsed.name;
         else {
           // On this marketplace the title sits immediately below the tab row and before rating/sales.
-          const headerLines = headerText.split(/\\r?\\n/).map(x=>x.replace(/\\s+/g,' ').trim()).filter(Boolean);
+          const headerLines = headerText.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
           const tabs = headerLines.findIndex(x=>/ringkasan/i.test(x));
           if (tabs >= 0) {
             for (let j=tabs+1;j<Math.min(headerLines.length,tabs+8);j++) {
-              let candidate=headerLines[j].replace(/\\b(?:mall|official\\s+store|power\\s*shop)\\b/ig,' ').replace(/\\s+/g,' ').trim();
-              candidate=candidate.replace(/\\s+(?:4[.,]9|5[.,]0)\\s*\\(?\\d+\\)?.*$/i,'').replace(/\\s+\\d+\\s+terjual.*$/i,'').trim();
+              let candidate=headerLines[j].replace(/\b(?:mall|official\s+store|power\s*shop)\b/ig,' ').replace(/\s+/g,' ').trim();
+              candidate=candidate.replace(/\s+(?:4[.,]9|5[.,]0)\s*\(?\d+\)?.*$/i,'').replace(/\s+\d+\s+terjual.*$/i,'').trim();
               if(candidate.length>=8 && candidate.length<=180 &&
                 !/ringkasan|ulasan|deskripsi|rekomendasi|\\b(?:terjual|rating|bintang|info promosi)\\b/i.test(candidate) &&
                 !/^\\d[\\d.,]*$/.test(candidate)) { parsed.name=candidate; break; }
