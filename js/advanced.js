@@ -790,8 +790,9 @@
               let candidate=headerLines[j].replace(/\b(?:mall|official\s+store|power\s*shop)\b/ig,' ').replace(/\s+/g,' ').trim();
               candidate=candidate.replace(/\s+(?:4[.,]9|5[.,]0)\s*\(?\d+\)?.*$/i,'').replace(/\s+\d+\s+terjual.*$/i,'').trim();
               if(candidate.length>=8 && candidate.length<=180 &&
-                !/ringkasan|ulasan|deskripsi|rekomendasi|\\b(?:terjual|rating|bintang|info promosi)\\b/i.test(candidate) &&
-                !/^\\d[\\d.,]*$/.test(candidate)) { parsed.name=candidate; break; }
+                !/ringkasan|ulasan|deskripsi|rekomendasi|\b(?:terjual|rating|bintang|info promosi|tren produk|pesanan|kreator|keranjang)\b/i.test(candidate) &&
+                !/^\d[\d.,]*$/.test(candidate) &&
+                /[a-z]{3}/i.test(candidate)) { parsed.name=candidate; break; }
             }
           }
         }
