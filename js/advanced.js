@@ -228,7 +228,7 @@
       const normalized = max > 0 ? Math.max(0, Number(product.trend[m.key])) / max : 0;
       score += normalized * m.weight; weight += m.weight;
     });
-    return weight ? Math.round(score / weight * 1000) / 10 : null;
+    return weight ? Math.round(score * 1000) / 10 : null;
   }
   function productDateLabel(value) {
     if (!value) return 'Data belum diinput';
