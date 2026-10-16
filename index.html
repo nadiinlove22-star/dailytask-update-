@@ -37,12 +37,12 @@
         }
         main { gap: .7rem !important; }
         #tab-tasks > div, #tab-notes > div:not(#note-editor-modal),
-        #tab-calendar > div, #tab-stats > div, #tab-settings > div,
+        #tab-analysis > div, #tab-stats > div, #tab-settings > div,
         #advanced-dashboard, #notes-list > section, #notes-list > div {
             box-shadow: none !important;
             background-image: none !important;
         }
-        #tab-notes > div:first-child, #tab-calendar > div,
+        #tab-notes > div:first-child, #tab-analysis > div,
         #tab-stats > div, #tab-settings > div,
         #advanced-dashboard, #notes-list > section {
             background-color: var(--surface) !important;
@@ -60,7 +60,7 @@
             transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
             -webkit-tap-highlight-color: transparent;
         }
-        #nav-tasks, #nav-notes, #nav-calendar, #nav-stats, #nav-settings {
+        #nav-tasks, #nav-notes, #nav-analysis, #nav-stats, #nav-settings {
             border-radius: 9px !important;
             font-weight: 500 !important;
         }
@@ -185,22 +185,38 @@
             <div id="notes-list" class="flex flex-col gap-2"></div>
         </div>
 
-        <!-- TAB 3: FOKUS -->
-        <div id="tab-focus" class="tab-page hidden flex flex-col gap-3">
-            <section class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-                <p class="text-[10px] uppercase tracking-widest text-emerald-300">Ruang fokus</p>
-                <h2 class="mt-1 text-sm font-bold text-white">Selesaikan satu hal pada satu waktu</h2>
-                <p class="mt-1 text-[11px] text-slate-400">Pilih tugas yang ingin kamu kerjakan sekarang, lalu mulai sesi fokus tanpa berpindah menu.</p>
-                <div id="focus-task-list" class="mt-3 flex flex-col gap-2"></div>
+        <!-- TAB 3: ANALISA PRODUK -->
+        <div id="tab-analysis" class="tab-page hidden flex flex-col gap-3">
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div><h2 class="text-sm font-bold text-white">Analisa Produk</h2><p class="mt-1 text-[11px] text-slate-400">Catat tren 7 hari dan urutkan produk otomatis berdasarkan performa.</p></div>
+                    <button type="button" onclick="openProductEditor()" class="shrink-0 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white">+ Produk</button>
+                </div>
+                <p class="mt-2 text-[10px] text-slate-500">Skor otomatis: pesanan 40%, CTR 25%, kreator 15%, tambah keranjang 20%. Produk tanpa data lengkap ditampilkan terpisah.</p>
             </section>
-            <section id="focus-pomodoro-host" class="flex flex-col gap-3"></section>
-            <section class="rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
-                <h3 class="text-xs font-bold text-white">Tips sesi fokus</h3>
-                <ul class="mt-2 list-disc pl-4 space-y-1 text-[11px] text-slate-400">
-                    <li>Pilih satu tugas yang jelas.</li><li>Fokus selama 25 menit, lalu istirahat 5 menit.</li>
-                    <li>Timer tetap berjalan selama halaman aplikasi terbuka.</li>
-                </ul>
-            </section>
+            <div id="analysis-summary" class="text-[11px] text-slate-400"></div>
+            <div id="analysis-products-list" class="flex flex-col gap-2"></div>
+            <div id="product-editor-modal" class="hidden fixed inset-0 z-50 bg-black/75 p-3 items-center justify-center overflow-y-auto">
+                <form onsubmit="saveProductEditor(event)" class="my-auto w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-4 flex flex-col gap-3">
+                    <h3 id="product-editor-title" class="text-base font-bold text-white">Tambah produk</h3>
+                    <input type="hidden" id="product-editor-id">
+                    <label class="text-xs text-slate-300" for="product-editor-name">Nama produk</label>
+                    <input id="product-editor-name" required maxlength="120" placeholder="Contoh: Baju" class="w-full rounded-lg border border-slate-700 px-3 py-2.5 text-sm text-white">
+                    <label class="text-xs text-slate-300" for="product-editor-url">Link Shopee / TikTok / produk</label>
+                    <input id="product-editor-url" required type="url" placeholder="https://..." class="w-full rounded-lg border border-slate-700 px-3 py-2.5 text-sm text-white">
+                    <p class="text-[10px] text-slate-500">Link produk akan dibuka ke aplikasi jika perangkat mendukungnya; jika tidak, sistem membuka browser.</p>
+                    <div class="rounded-xl border border-slate-800 p-3">
+                        <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold text-white">Tren 7 hari terakhir</h4><span id="product-editor-date" class="text-[10px] text-slate-500">Belum diinput</span></div>
+                        <p class="mt-1 text-[10px] text-slate-400">Kosongkan metrik yang tidak tersedia. Simpan tanpa data agar statusnya tetap jelas.</p>
+                        <label class="mt-3 block text-xs text-slate-300" for="product-editor-orders">Jumlah pesanan</label><input id="product-editor-orders" type="number" min="0" step="1" placeholder="Belum diinput" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
+                        <label class="mt-2 block text-xs text-slate-300" for="product-editor-ctr">CTR (%)</label><input id="product-editor-ctr" type="number" min="0" max="100" step="0.01" placeholder="Belum diinput" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
+                        <label class="mt-2 block text-xs text-slate-300" for="product-editor-creators">Jumlah kreator</label><input id="product-editor-creators" type="number" min="0" step="1" placeholder="Belum diinput" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
+                        <label class="mt-2 block text-xs text-slate-300" for="product-editor-cart">Add to cart</label><input id="product-editor-cart" type="number" min="0" step="1" placeholder="Belum diinput" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
+                    </div>
+                    <p id="product-editor-error" class="hidden text-xs text-rose-400"></p>
+                    <div class="flex gap-2"><button type="button" onclick="closeProductEditor()" class="flex-1 rounded-lg bg-slate-800 py-2.5 text-sm text-slate-300">Batal</button><button type="submit" class="flex-1 rounded-lg bg-emerald-600 py-2.5 text-sm font-bold text-white">Simpan</button></div>
+                </form>
+            </div>
         </div>
 
         <!-- TAB 4: STATISTIK -->
@@ -280,8 +296,8 @@
         <button type="button" onclick="switchTab('notes')" id="nav-notes" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
             <span class="text-base leading-none mb-0.5">📝</span> Catatan
         </button>
-        <button type="button" onclick="switchTab('focus')" id="nav-focus" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
-            <span class="text-base leading-none mb-0.5">🎯</span> Fokus
+        <button type="button" onclick="switchTab('analysis')" id="nav-analysis" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
+            <span class="text-base leading-none mb-0.5">📈</span> Analisa
         </button>
         <button type="button" onclick="switchTab('stats')" id="nav-stats" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 font-medium w-1/5 py-1 transition">
             <span class="text-base leading-none mb-0.5">📊</span> Analitik
@@ -372,11 +388,11 @@
     </div>
 
     <!-- Urutan Import Harus Sesuai Dependensi -->
-<script src="js/config.js?v=20261016-2"></script>
-<script src="js/storage.js?v=20261016-2"></script>
-<script src="js/ui.js?v=20261016-2"></script>
-<script src="js/advanced.js?v=20261016-2"></script>
-<script src="js/app.js?v=20261016-2"></script>
+<script src="js/config.js?v=20261016-3"></script>
+<script src="js/storage.js?v=20261016-3"></script>
+<script src="js/ui.js?v=20261016-3"></script>
+<script src="js/advanced.js?v=20261016-3"></script>
+<script src="js/app.js?v=20261016-3"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
