@@ -399,9 +399,15 @@
       }
     } catch (e) { metadataError = String(e && e.message || 'Koneksi metadata tidak tersedia.'); console.warn('Metadata produk tidak tersedia:', e); }
     const guessedName = productNameFromUrl(url);
+    const cleanTitle = value => {
+      const title = String(value || '').replace(/\\s+/g, ' ').trim();
+      if (!title || /security check|verify (that )?you are human|captcha|access denied|just a moment|checking your browser|robot or human|periksa keamanan|verifikasi keamanan/i.test(title)) return '';
+      return title;
+    };
+    const productTitle = cleanTitle(metadata && metadata.title) || cleanTitle(guessedName);
     const item = {
       id:'prod-'+Date.now(),
-      name:(metadata && metadata.title) || guessedName || 'Produk baru · '+new URL(url).hostname,
+      name:productTitle || 'Nama produk belum terbaca',
       url,
       trend:{orders:null,ctr:null,creators:null,cart:null},
       updatedAt:null,
@@ -419,10 +425,11 @@
     }
     input.value='';
     renderAnalysisTab();
-    if (metadata && metadata.title) {
-      say('Nama produk berhasil diambil otomatis. Statistik performa tidak disediakan oleh halaman publik; perlu API/data resmi platform.', 'text-emerald-300');
+    if (productTitle) {
+      say(metadata && cleanTitle(metadata.title) ? 'Nama produk berhasil dibaca dari metadata halaman. Statistik performa belum diambil otomatis.' : 'Nama diambil dari teks link, bukan diverifikasi dari halaman. Statistik performa belum diambil otomatis.', 'text-emerald-300');
     } else {
-      say('Link tersimpan, tetapi nama otomatis gagal dibaca. '+(metadataError ? metadataError+' ' : '')+'TikTok mungkin membatasi akses; ubah nama lewat Edit. Statistik perlu akses API resmi.', 'text-amber-300');
+      say('TikTok menampilkan Security Check atau tidak memberikan nama produk. Link tersimpan, tetapi nama tidak ditebak. Buka Edit produk dan isi nama yang benar. '+(metadataError ? metadataError+' ' : '')+'CTR, pesanan, add-to-cart, dan kreator belum terhubung ke sumber data resmi.', 'text-amber-300');
+      openProductEditor(item.id);
     }
     if (button) {button.disabled=false;button.textContent='Tambah';}
   }
