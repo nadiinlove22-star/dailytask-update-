@@ -454,30 +454,69 @@
     return analysisOcrWorkerPromise;
   }
   function parseAnalysisScreenshotText(text) {
-    const lines = String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    const all = lines.join(' \n ').replace(/\s+/g, ' ');
-    const findNumber = (patterns, percent=false) => {
-      for (const pattern of patterns) {
-        const match = all.match(pattern);
-        if (match && match[1]) {
-          const raw = match[1].replace(/\s/g,'').replace(/,(?=\d{1,2}\b)/g,'.').replace(/\.(?=\d{3}\b)/g,'').replace(/,/g,'');
-          let value = Number(raw);
-          const suffix = String(match[2] || '').toLowerCase();
-          if (suffix === 'k') value *= 1000;
-          else if (suffix === 'm') value *= 1000000;
-          else if (suffix === 'b') value *= 1000000000;
-          if (Number.isFinite(value) && value >= 0) return value;
+    const lines = String(text || '').split(/\r?\n/).map(s => s.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const labelRules = {
+      ctr: /\b(?:CTR|click.?through.?rate|rasio klik|rasio klik tayang)\b/i,
+      orders: /\b(?:pesanan|orders?|sold|terjual|jumlah penjualan)\b/i,
+      creators: /\b(?:kreator|creators?|creator affiliate|jumlah kreator)\b/i,
+      cart: /\b(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?)\b/i
+    };
+    const numberFromLine = (line, labelRegex, key) => {
+      const label = line.match(labelRegex);
+      if (!label) return null;
+      // Read the number after its own label only, never borrow the next metric's number.
+      const tail = line.slice(label.index + label[0].length);
+      const match = tail.match(/^[^\d%]{0,18}(\d[\d.,]*)(?:\s*([KMB]))?\s*(%?)/i);
+      if (!match) return null;
+      if (key === 'ctr' && !match[3] && !/\bCTR\b/i.test(label[0])) {
+        // CTR values are percentages; allow a clearly labeled CTR even when OCR drops %.
+      }
+      let raw = match[1].replace(/\s/g, '');
+      if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) raw = raw.replace(/\./g, '');
+      else if (/^\d{1,3}(?:,\d{3})+$/.test(raw)) raw = raw.replace(/,/g, '');
+      else raw = raw.replace(',', '.');
+      let value = Number(raw);
+      const suffix = String(match[2] || '').toLowerCase();
+      if (suffix === 'k') value *= 1000;
+      else if (suffix === 'm') value *= 1000000;
+      else if (suffix === 'b') value *= 1000000000;
+      return Number.isFinite(value) && value >= 0 ? value : null;
+    };
+    const findMetric = (key) => {
+      const rule = labelRules[key];
+      // Prefer the exact OCR line containing the label. Only inspect a following line if it
+      // contains a number and no other metric label, to avoid confusing CTR with orders.
+      for (let i = 0; i < lines.length; i++) {
+        if (!rule.test(lines[i])) continue;
+        const value = numberFromLine(lines[i], rule, key);
+        if (value !== null) return value;
+        const next = lines[i + 1] || '';
+        const hasOtherMetric = Object.keys(labelRules).some(other => other !== key && labelRules[other].test(next));
+        if (!hasOtherMetric) {
+          const match = next.match(/^\s*(\d[\d.,]*)(?:\s*([KMB]))?\s*(%?)\s*$/i);
+          if (match) {
+            const synthetic = lines[i] + ' ' + next;
+            const valueNext = numberFromLine(synthetic, rule, key);
+            if (valueNext !== null) return valueNext;
+          }
         }
       }
       return null;
     };
-    const ctr = findNumber([/(?:CTR|click.?through.?rate|rasio klik)[^\d%]{0,24}(\d+(?:[.,]\d+)?)\s*%?/i]);
-    const orders = findNumber([/(?:pesanan|orders?|sold|terjual|jumlah penjualan)[^\d]{0,30}(\d[\d.,]*)(?:\s*([KMB])\b)?/i]);
-    const creators = findNumber([/(?:kreator|creators?|creator affiliate|jumlah kreator)[^\d]{0,30}(\d[\d.,]*)(?:\s*([KMB])\b)?/i]);
-    const cart = findNumber([/(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?)[^\d]{0,30}(\d[\d.,]*)(?:\s*([KMB])\b)?/i]);
-    const ignored = /^(analisa|analisis|tren|trend|statistik|produk|product|tiktok shop|data|7 hari|7 days|overview|ringkasan)$/i;
-    const name = lines.find(line => line.length >= 4 && line.length <= 120 && !ignored.test(line) && !/(CTR|pesanan|orders?|kreator|creator|keranjang|cart|terjual|revenue|pendapatan|klik|views|tayangan)/i.test(line) && !/^https?:/i.test(line)) || '';
-    return { name, orders, ctr, creators, cart };
+    const ignored = /^(analisa|analisis|tren|trend|statistik|produk|product|tiktok shop|data|7 hari|7 days|overview|ringkasan|performa produk|product performance|produk terlaris)$/i;
+    const metricLine = line => Object.values(labelRules).some(rule => rule.test(line)) ||
+      /\b(?:revenue|pendapatan|klik|views|tayangan|komisi|gmv|conversion|konversi|stok|harga|rp\s?\d)/i.test(line);
+    const candidates = lines.filter(line => line.length >= 4 && line.length <= 160 &&
+      !ignored.test(line) && !metricLine(line) && !/^https?:/i.test(line) &&
+      !/^\d[\d.,]*\s*(?:%|K|M|B)?$/i.test(line));
+    // Product title is usually near the top of the screenshot. Prefer the first plausible
+    // title line instead of any arbitrary text from the whole screenshot.
+    let name = candidates[0] || '';
+    name = name.replace(/^[•·|\-–—]+\s*/, '').trim();
+    if (name && name === name.toLocaleUpperCase('id-ID') && /[A-ZÀ-Þ]/.test(name)) {
+      name = name.toLocaleLowerCase('id-ID').replace(/(^|[\s/\-(])([a-zà-ÿ])/g, (m, lead, letter) => lead + letter.toLocaleUpperCase('id-ID'));
+    }
+    return { name, orders: findMetric('orders'), ctr: findMetric('ctr'), creators: findMetric('creators'), cart: findMetric('cart') };
   }
   async function readAnalysisScreenshot() {
     const fileInput = $('analysis-screenshot');
