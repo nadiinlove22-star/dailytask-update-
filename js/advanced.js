@@ -325,8 +325,7 @@
     const all = getAnalysisProducts();
     host.innerHTML = '';
     const ranked = all.map(p => {
-      const score = productScore(p);
-      const trend = p.trend || {};
+      const score = productScore(p), trend = p.trend || {};
       const hasAny = metricFields.some(m => hasMetric(trend[m.key]));
       return { product:p, score, hasData:!!(p.updatedAt && hasAny), hasAny };
     }).sort((a,b) => {
@@ -336,32 +335,83 @@
       return (b.score ?? -1) - (a.score ?? -1) || String(a.product.name).localeCompare(String(b.product.name));
     });
     const summary = $('analysis-summary');
-    if (summary) summary.textContent = all.length ? ranked.filter(x=>x.hasData).length + ' ada data · ' + ranked.filter(x=>!x.hasData).length + ' belum diinput · urutan skor tertinggi ke terendah' : 'Belum ada produk. Tambahkan produk pertama untuk mulai mencatat tren.';
-    if (!ranked.length) { host.innerHTML = '<div class="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">Belum ada produk. Tekan + Produk untuk menambahkan.</div>'; return; }
-    const wrap = document.createElement('div'); wrap.className = 'overflow-x-auto rounded-lg border border-slate-800';
-    const table = document.createElement('table'); table.className = 'w-full border-collapse text-[11px]';
-    table.style.minWidth = '560px';
-    const thead = document.createElement('thead'); thead.className = 'bg-slate-800/80 text-slate-400';
-    const trh = document.createElement('tr');
-    ['Rank','Produk','Skor','CTR / Order / ATC','Status / rekomendasi','Aksi'].forEach(label => { const th=document.createElement('th'); th.className='border-b border-slate-700 px-2 py-2 text-left font-semibold whitespace-nowrap'; th.textContent=label; trh.appendChild(th); });
-    thead.appendChild(trh); table.appendChild(thead);
-    const tbody = document.createElement('tbody');
+    if (summary) summary.textContent = all.length ? ranked.filter(x=>x.hasData).length + ' ada data · ' + ranked.filter(x=>!x.hasData).length + ' belum diinput · skor tertinggi di atas' : 'Tempel link produk di atas untuk mulai.';
+    if (!ranked.length) { host.innerHTML = '<div class="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">Belum ada produk. Tempel link produk di atas.</div>'; return; }
+    const cards = document.createElement('div'); cards.className = 'flex flex-col gap-2';
     ranked.forEach((entry, idx) => {
-      const p=entry.product, t=p.trend||{}, status=productStatus(entry.score), tr=document.createElement('tr');
-      tr.className='border-b border-slate-800/80 last:border-0 hover:bg-slate-800/30';
-      const rank=document.createElement('td'); rank.className='px-2 py-2 align-top text-emerald-300 whitespace-nowrap'; rank.textContent=entry.hasData?'#'+(idx+1):'—'; tr.appendChild(rank);
-      const nameCell=document.createElement('td'); nameCell.className='px-2 py-2 align-top';
-      const name=document.createElement('button'); name.type='button'; name.className='max-w-[140px] truncate text-left font-semibold text-slate-100'; name.textContent=p.name||'Produk tanpa nama'; name.title='Buka tautan produk'; name.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');}); nameCell.appendChild(name);
-      const date=document.createElement('div'); date.className='mt-0.5 text-[9px] text-slate-500'; date.textContent=entry.hasData?productDateLabel(p.updatedAt):'Belum diinput'; nameCell.appendChild(date); tr.appendChild(nameCell);
-      const scoreCell=document.createElement('td'); scoreCell.className='px-2 py-2 align-top whitespace-nowrap';
-      const badge=document.createElement('span'); badge.className='inline-block rounded px-1.5 py-0.5 font-bold '+(entry.score===null?'bg-amber-500/10 text-amber-300':entry.score>=80?'bg-emerald-500/15 text-emerald-300':entry.score>=65?'bg-yellow-500/15 text-yellow-300':'bg-rose-500/15 text-rose-300'); badge.textContent=entry.score===null?'—':entry.score+'/100'; scoreCell.appendChild(badge); tr.appendChild(scoreCell);
-      const met=document.createElement('td'); met.className='px-2 py-2 align-top whitespace-nowrap text-slate-300'; met.textContent='CTR '+compactMetric(t.ctr,'ctr')+' · Ord '+compactMetric(t.orders,'orders')+' · ATC '+compactMetric(t.cart,'cart'); const cr=document.createElement('div'); cr.className='mt-0.5 text-[9px] text-slate-500'; cr.textContent='Kreator '+compactMetric(t.creators,'creators'); met.appendChild(cr); tr.appendChild(met);
-      const statusCell=document.createElement('td'); statusCell.className='px-2 py-2 align-top'; const st=document.createElement('div'); st.className='whitespace-nowrap font-semibold '+status.color; st.textContent=status.label; const note=document.createElement('div'); note.className='mt-0.5 max-w-[150px] whitespace-normal text-[10px] text-slate-400'; note.textContent=status.note; statusCell.append(st,note); tr.appendChild(statusCell);
-      const actions=document.createElement('td'); actions.className='px-2 py-2 align-top whitespace-nowrap'; const edit=document.createElement('button'); edit.type='button'; edit.className='rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300'; edit.textContent='Edit'; edit.addEventListener('click',()=>openProductEditor(p.id)); const open=document.createElement('button'); open.type='button'; open.className='ml-1 rounded bg-emerald-600/20 px-2 py-1 text-[10px] text-emerald-300'; open.textContent='Buka'; open.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');}); const del=document.createElement('button'); del.type='button'; del.className='ml-1 rounded px-1 py-1 text-[10px] text-rose-400'; del.textContent='×'; del.title='Hapus produk'; del.addEventListener('click',()=>deleteAnalysisProduct(p.id)); actions.append(edit,open,del); tr.appendChild(actions);
-      tbody.appendChild(tr);
+      const p=entry.product, t=p.trend||{}, status=productStatus(entry.score);
+      const card=document.createElement('article');
+      card.className='w-full min-w-0 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 p-3';
+      const top=document.createElement('div'); top.className='flex min-w-0 items-start gap-2';
+      const rank=document.createElement('div'); rank.className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-[10px] font-bold text-emerald-300'; rank.textContent=entry.hasData?'#'+(idx+1):'—';
+      const info=document.createElement('div'); info.className='min-w-0 flex-1';
+      const name=document.createElement('button'); name.type='button'; name.className='block w-full truncate text-left text-xs font-bold text-slate-100'; name.textContent=p.name||'Produk tanpa nama'; name.title='Buka tautan produk'; name.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');});
+      const date=document.createElement('div'); date.className='mt-1 truncate text-[9px] text-slate-500'; date.textContent=entry.hasData?productDateLabel(p.updatedAt):'Metrik belum tersedia · '+(p.url?new URL(p.url).hostname:'link belum tersedia');
+      info.append(name,date); top.append(rank,info);
+      const score=document.createElement('span'); score.className='shrink-0 rounded-lg px-2 py-1 text-[11px] font-extrabold '+(entry.score===null?'bg-amber-500/10 text-amber-300':entry.score>=80?'bg-emerald-500/15 text-emerald-300':entry.score>=65?'bg-yellow-500/15 text-yellow-300':'bg-rose-500/15 text-rose-300'); score.textContent=entry.score===null?'—':entry.score+'/100'; top.append(score); card.append(top);
+      const metrics=document.createElement('div'); metrics.className='mt-3 grid grid-cols-4 gap-1.5';
+      [['CTR',compactMetric(t.ctr,'ctr')],['Pesanan',compactMetric(t.orders,'orders')],['ATC',compactMetric(t.cart,'cart')],['Kreator',compactMetric(t.creators,'creators')]].forEach(([label,value])=>{
+        const cell=document.createElement('div'); cell.className='min-w-0 rounded-lg bg-slate-800/70 px-2 py-2 text-center';
+        const l=document.createElement('div'); l.className='truncate text-[9px] text-slate-500'; l.textContent=label;
+        const v=document.createElement('div'); v.className='mt-1 truncate text-[11px] font-semibold text-slate-200'; v.textContent=value;
+        cell.append(l,v); metrics.appendChild(cell);
+      });
+      card.append(metrics);
+      const foot=document.createElement('div'); foot.className='mt-3 flex min-w-0 items-center justify-between gap-2';
+      const statusWrap=document.createElement('div'); statusWrap.className='min-w-0 flex-1';
+      const st=document.createElement('div'); st.className='truncate text-[10px] font-semibold '+status.color; st.textContent=status.label;
+      const note=document.createElement('div'); note.className='truncate text-[9px] text-slate-500'; note.textContent=status.note;
+      statusWrap.append(st,note);
+      const actions=document.createElement('div'); actions.className='flex shrink-0 gap-1';
+      const edit=document.createElement('button'); edit.type='button'; edit.className='rounded-lg border border-slate-700 px-2.5 py-1.5 text-[10px] text-slate-300'; edit.textContent='Edit'; edit.addEventListener('click',()=>openProductEditor(p.id));
+      const open=document.createElement('button'); open.type='button'; open.className='rounded-lg bg-emerald-600/20 px-2.5 py-1.5 text-[10px] text-emerald-300'; open.textContent='Buka'; open.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');});
+      const del=document.createElement('button'); del.type='button'; del.className='rounded-lg px-2 py-1.5 text-[10px] text-rose-400'; del.textContent='×'; del.title='Hapus produk'; del.addEventListener('click',()=>deleteAnalysisProduct(p.id));
+      actions.append(edit,open,del); foot.append(statusWrap,actions); card.append(foot); cards.appendChild(card);
     });
-    table.appendChild(tbody); wrap.appendChild(table); host.appendChild(wrap);
+    host.appendChild(cards);
   }
+  function productNameFromUrl(url) {
+    try {
+      const u = new URL(url);
+      const parts = u.pathname.split('/').filter(Boolean);
+      let candidate = decodeURIComponent(parts[parts.length-1] || '').replace(/[-_]+/g,' ').replace(/\.(html?|php)$/i,'').replace(/\?.*$/,'').trim();
+      if (/^product\s*\d+$/i.test(candidate) || /^\d+$/.test(candidate) || candidate.length < 3) candidate = '';
+      return candidate.slice(0,120);
+    } catch (_) { return ''; }
+  }
+  async function addProductFromPastedLink() {
+    const input = $('analysis-paste-url'), feedback = $('analysis-paste-feedback');
+    const url = safeProductUrl(input && input.value);
+    if (!url) { if(feedback){feedback.textContent='Tempel link produk yang valid dulu.';feedback.className='mt-2 text-[10px] text-rose-400';} return; }
+    const existing = getAnalysisProducts().find(p => safeProductUrl(p.url) === url);
+    if (existing) { if(feedback){feedback.textContent='Link ini sudah ada di daftar.';feedback.className='mt-2 text-[10px] text-amber-300';} openProductEditor(existing.id); return; }
+    const guessedName = productNameFromUrl(url);
+    const item = { id:'prod-'+Date.now(), name:guessedName || 'Produk baru · '+new URL(url).hostname, url, trend:{orders:null,ctr:null,creators:null,cart:null}, updatedAt:null };
+    getAnalysisProducts().push(item);
+    if (typeof saveData === 'function') {
+      const ok = await saveData();
+      if (!ok) { progressData.__analysisProducts = getAnalysisProducts().filter(p=>String(p.id)!==String(item.id)); if(feedback){feedback.textContent='Gagal menyimpan. Periksa koneksi lalu coba lagi.';feedback.className='mt-2 text-[10px] text-rose-400';} return; }
+    }
+    input.value='';
+    if(feedback){feedback.textContent='Link ditambahkan. Nama otomatis diambil dari link jika tersedia; CTR, pesanan, kreator, dan add-to-cart perlu data resmi/manual.';feedback.className='mt-2 text-[10px] text-emerald-300';}
+    renderAnalysisTab();
+    // TikTok's public oEmbed can provide a title for some public URLs; most shop metrics are not exposed by product links.
+    if (/tiktok\.com$/i.test(new URL(url).hostname) || /\.tiktok\.com$/i.test(new URL(url).hostname)) {
+      try {
+        const response = await fetch('https://www.tiktok.com/oembed?url='+encodeURIComponent(url), {headers:{'Accept':'application/json'}});
+        if (response.ok) {
+          const data = await response.json();
+          const title = String(data.title || '').trim().slice(0,120);
+          if (title && (item.name.startsWith('Produk baru ·') || item.name === guessedName)) {
+            item.name = title;
+            await saveData();
+            renderAnalysisTab();
+          }
+        }
+      } catch (_) { /* CORS/network/platform restrictions: keep the pasted link and fallback title. */ }
+    }
+  }
+  window.addProductFromPastedLink = addProductFromPastedLink;
   window.openProductEditor = openProductEditor;
   window.closeProductEditor = closeProductEditor;
   window.saveProductEditor = saveProductEditor;
