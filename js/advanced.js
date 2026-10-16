@@ -661,7 +661,9 @@
         // Ignore further fragments of the same label, but do not treat them as data.
         if(rules[label.key].test(row.text))continue;
         const candidates=row.words.map(w=>({w,n:parseNum(w.text,label.key)}))
-          .filter(x=>x.n!==null&&(label.key!=='ctr'||/%|％/.test(x.w.text)));
+          .filter(x=>x.n!==null&&(label.key!=='ctr'||/%|％/.test(x.w.text))
+            // Counts of creators/orders/cart buyers must be whole numbers; reject promo prices such as Rp2,5jt.
+            &&(label.key==='ctr'||!['orders','creators','cart'].includes(label.key)||Number.isInteger(x.n)));
         if(unrelatedMetric.test(row.text))break;
         if(!candidates.length)continue;
         candidates.sort((a,b)=>{
@@ -744,6 +746,24 @@
       }
       // Use spatial word boxes for the 2x2 metric cards; fall back to text-only parsing
       // only when this OCR engine did not return usable coordinates.
+      // Read the product-header region separately at higher resolution. Full-screen OCR often
+      // misses the tiny product title while correctly reading the larger trend metrics.
+      let headerText = '';
+      try {
+        const bitmap = await createImageBitmap(file);
+        const cropHeight = Math.min(bitmap.height, Math.round(bitmap.height * 0.34));
+        const canvas = document.createElement('canvas');
+        const scale = Math.max(2, Math.min(3, 1800 / bitmap.width));
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(cropHeight * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, bitmap.width, cropHeight, 0, 0, canvas.width, canvas.height);
+        bitmap.close && bitmap.close();
+        const headerResult = await Tesseract.recognize(canvas, 'ind+eng');
+        headerText = headerResult && headerResult.data && headerResult.data.text || '';
+      } catch (headerError) {
+        console.warn('OCR judul produk gagal; lanjutkan dengan hasil utama:', headerError);
+      }
       const positioned = parseAnalysisScreenshotLayout(result && result.data);
       const textParsed = parseAnalysisScreenshotText(rawOcrText);
       // Coordinate parsing is primary; use text parsing only for fields the spatial parser could not confidently find.
@@ -753,6 +773,23 @@
       // and are surfaced for review. Text-only parsing is used only when coordinates
       // are unavailable altogether.
       const parsed = positioned || textParsed;
+      if (!parsed.name && headerText.trim()) {
+        const headerParsed = parseAnalysisScreenshotText(headerText);
+        if (headerParsed.name) parsed.name = headerParsed.name;
+        else {
+          // On this marketplace the title sits immediately below the tab row and before rating/sales.
+          const headerLines = headerText.split(/\\r?\\n/).map(x=>x.replace(/\\s+/g,' ').trim()).filter(Boolean);
+          const tabs = headerLines.findIndex(x=>/ringkasan/i.test(x)&&/ulasan/i.test(x)&&/deskripsi/i.test(x));
+          if (tabs >= 0) {
+            for (let j=tabs+1;j<Math.min(headerLines.length,tabs+5);j++) {
+              const candidate=headerLines[j].replace(/^(?:mall|official\\s+store)\\s*/i,'').trim();
+              if(candidate.length>=8 && candidate.length<=180 &&
+                !/ringkasan|ulasan|deskripsi|rekomendasi|\\b(?:terjual|rating|bintang|info promosi)\\b/i.test(candidate) &&
+                !/^\\d[\\d.,]*$/.test(candidate)) { parsed.name=candidate; break; }
+            }
+          }
+        }
+      }
       closeAddProductModal();
       const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
       if (existing) openProductEditor(existing.id);
