@@ -610,7 +610,7 @@
       if (status) status.textContent = message;
       say(message, found.length ? 'text-emerald-300' : 'text-amber-300');
       if (!found.length) {
-        const sample = rawOcrText.trim().replace(/\\s+/g, ' ').slice(0, 220);
+        const sample = rawOcrText.trim().replace(/\s+/g, ' ').slice(0, 220);
         const diagnostic = sample ? ' Teks yang terbaca OCR: "' + sample + '".' : ' OCR tidak menghasilkan teks. Periksa apakah gambar jelas dan pustaka OCR selesai dimuat.';
         $('product-editor-error').textContent = 'OCR belum menemukan nama atau metrik yang dikenali.' + diagnostic;
         $('product-editor-error').classList.remove('hidden');
