@@ -416,7 +416,7 @@
     } catch (e) { metadataError = String(e && e.message || 'Koneksi metadata tidak tersedia.'); console.warn('Metadata produk tidak tersedia:', e); }
     const guessedName = productNameFromUrl(url);
     const cleanTitle = value => {
-      const title = String(value || '').replace(/\\s+/g, ' ').trim();
+      const title = String(value || '').replace(/\s+/g, ' ').trim();
       if (!title || /security check|verify (that )?you are human|captcha|access denied|just a moment|checking your browser|robot or human|periksa keamanan|verifikasi keamanan/i.test(title)) return '';
       return title;
     };
