@@ -617,13 +617,14 @@
         openProductEditor();
         $('product-editor-id').value = '';
         $('product-editor-url').value = productUrl || '';
-        $('product-editor-name').value = parsed.name || (productUrl ? productNameFromUrl(productUrl) : '') || '';
       }
-      if (parsed.name && !$('product-editor-name').value.trim()) $('product-editor-name').value = parsed.name;
-      if (parsed.orders !== null) $('product-editor-orders').value = parsed.orders;
-      if (parsed.ctr !== null) $('product-editor-ctr').value = parsed.ctr;
-      if (parsed.creators !== null) $('product-editor-creators').value = parsed.creators;
-      if (parsed.cart !== null) $('product-editor-cart').value = parsed.cart;
+      // OCR must never leave stale values from a previously edited product in the form.
+      // Clear first, then populate only fields confidently parsed from this screenshot.
+      $('product-editor-name').value = parsed.name || '';
+      $('product-editor-orders').value = parsed.orders !== null ? parsed.orders : '';
+      $('product-editor-ctr').value = parsed.ctr !== null ? parsed.ctr : '';
+      $('product-editor-creators').value = parsed.creators !== null ? parsed.creators : '';
+      $('product-editor-cart').value = parsed.cart !== null ? parsed.cart : '';
       const found = [parsed.name ? 'nama' : '', parsed.orders !== null ? 'pesanan' : '', parsed.ctr !== null ? 'CTR' : '', parsed.creators !== null ? 'kreator' : '', parsed.cart !== null ? 'add to cart' : ''].filter(Boolean);
       const message = (found.length ? 'Terbaca: ' + found.join(', ') + '. Periksa hasilnya lalu tekan Simpan.' : 'Gambar berhasil dibaca, tetapi nama/metrik belum dikenali. Isi atau koreksi formulir secara manual sebelum menyimpan.') + (productUrl ? '' : ' Link produk belum diisi; tempel link di formulir sebelum menyimpan.');
       if (status) status.textContent = message;
