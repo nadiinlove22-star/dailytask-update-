@@ -577,104 +577,97 @@
   // Prefer OCR word coordinates over flattened text: metric cards are arranged in a 2x2 grid,
   // so their values must be matched to labels in the same horizontal card.
   function parseAnalysisScreenshotLayout(data) {
-    const words = (data && data.words || []).filter(w =>
-      w && String(w.text || '').trim() && w.bbox &&
-      Number.isFinite(w.bbox.x0) && Number.isFinite(w.bbox.x1) &&
-      Number.isFinite(w.bbox.y0) && Number.isFinite(w.bbox.y1));
-    if (words.length < 4) return null;
-    const rows = [];
-    [...words].sort((a,b) => ((a.bbox.y0+a.bbox.y1)/2)-((b.bbox.y0+b.bbox.y1)/2) || a.bbox.x0-b.bbox.x0)
-      .forEach(word => {
-        const cy = (word.bbox.y0 + word.bbox.y1) / 2;
-        let row = rows.find(r => Math.abs(r.cy-cy) <= Math.max(8, (word.bbox.y1-word.bbox.y0)*0.65));
-        if (!row) { row={cy, words:[]}; rows.push(row); }
-        row.words.push(word);
-        row.cy = row.words.reduce((sum,w)=>sum+(w.bbox.y0+w.bbox.y1)/2,0)/row.words.length;
-      });
+    const words=(data&&data.words||[]).filter(w=>w&&String(w.text||'').trim()&&w.bbox&&
+      Number.isFinite(w.bbox.x0)&&Number.isFinite(w.bbox.x1)&&Number.isFinite(w.bbox.y0)&&Number.isFinite(w.bbox.y1))
+      .map(w=>({...w,text:String(w.text).trim(),cx:(w.bbox.x0+w.bbox.x1)/2,cy:(w.bbox.y0+w.bbox.y1)/2}));
+    if(words.length<4) return null;
+    const sorted=[...words].sort((a,b)=>a.cy-b.cy||a.bbox.x0-b.bbox.x0);
+    const rows=[];
+    for(const w of sorted){
+      const tolerance=Math.max(7,(w.bbox.y1-w.bbox.y0)*0.55);
+      let row=rows.find(r=>Math.abs(r.cy-w.cy)<=tolerance);
+      if(!row){row={cy:w.cy,words:[]};rows.push(row);}
+      row.words.push(w); row.cy=row.words.reduce((sum,x)=>sum+x.cy,0)/row.words.length;
+    }
     rows.sort((a,b)=>a.cy-b.cy);
-    rows.forEach(row => {
-      row.words.sort((a,b)=>a.bbox.x0-b.bbox.x0);
-      row.text = row.words.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim();
-      row.x0 = Math.min(...row.words.map(w=>w.bbox.x0));
-      row.x1 = Math.max(...row.words.map(w=>w.bbox.x1));
-    });
-    const rules = {
-      orders: /\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
-      ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
-      creators: /\b(?:jumlah\s+kreator|jumlah\s+creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
-      cart: /\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|pembeli\s+memasukkan\s+ke\s+keranjang|add.?to.?cart|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
+    rows.forEach(r=>{r.words.sort((a,b)=>a.bbox.x0-b.bbox.x0);r.text=r.words.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim();});
+    const rules={
+      orders:/\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
+      ctr:/\b(?:CTR|click.?through.?rate|rasio\s+klik(?:\s+tayang)?)\b/i,
+      creators:/\b(?:jumlah\s+kreator|jumlah\s+creators?|kreator|creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
+      cart:/\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|add.?to.?cart|tambah(?:kan)?\s+ke\s+keranjang|ditambahkan\s+ke\s+keranjang|cart\s+adds?|produk\s+ditambahkan|ditambah\s+ke\s+keranjang|keranjang)\b/i
     };
-    const numberFrom = (text, key) => {
-      const source = String(text || '');
-      const m = key === 'ctr' ? source.match(/(\d[\d.,]*)\s*(?:%|％)/) : source.match(/(?:^|\s)(\d[\d.,]*)(?:\s*([KMB]))?(?:\s|$)/i);
-      if (!m) return null;
-      let token=m[1];
-      if (/^\d{1,3}(?:\.\d{3})+$/.test(token)) token=token.replace(/\./g,'');
-      else if (/^\d{1,3}(?:,\d{3})+$/.test(token)) token=token.replace(/,/g,'');
-      else token=token.replace(',','.');
-      let n=Number(token), suffix=String(m[2]||'').toLowerCase();
-      if (suffix==='k') n*=1000; if(suffix==='m') n*=1000000; if(suffix==='b') n*=1000000000;
-      return Number.isFinite(n) ? n : null;
+    const parseNum=(text,key)=>{
+      const src=String(text||'');
+      const m=key==='ctr'?src.match(/(\d[\d.,]*)\s*(?:%|％)/):src.match(/(\d[\d.,]*)(?:\s*([KMB]))?/i);
+      if(!m)return null;
+      let t=m[1];
+      if(/^\d{1,3}(?:\.\d{3})+$/.test(t))t=t.replace(/\./g,'');
+      else if(/^\d{1,3}(?:,\d{3})+$/.test(t))t=t.replace(/,/g,'');
+      else t=t.replace(',','.');
+      let n=Number(t);const suf=String(m[2]||'').toLowerCase();
+      if(suf==='k')n*=1e3;if(suf==='m')n*=1e6;if(suf==='b')n*=1e9;
+      return Number.isFinite(n)&&n>=0?n:null;
     };
-    const parsed={orders:null,ctr:null,creators:null,cart:null};
-    const labels=[];
-    rows.forEach((row,ri) => {
-      for (const key of Object.keys(rules)) {
-        const match=rules[key].exec(row.text);
-        if (!match) continue;
-        const labelWords=row.words.filter(w => rules[key].test(w.text));
-        // For multi-word labels use the horizontal span of the whole row as a fallback.
-        const x0=labelWords.length ? Math.min(...labelWords.map(w=>w.bbox.x0)) : row.x0;
-        const x1=labelWords.length ? Math.max(...labelWords.map(w=>w.bbox.x1)) : Math.min(row.x1,x0+row.x1*0.35);
-        labels.push({key,ri,row,x:(x0+x1)/2});
-        const inline=numberFrom(row.text.slice(match.index+match[0].length),key);
-        if (inline!==null) parsed[key]=inline;
+    const findPhraseCenter=(row,match)=>{
+      // Map the matched phrase's character span back to OCR words, retaining their real x coordinates.
+      let cursor=0;const spans=[];
+      row.words.forEach(w=>{const start=cursor;const end=start+w.text.length;spans.push({w,start,end});cursor=end+1;});
+      const hitStart=match.index,hitEnd=hitStart+match[0].length;
+      const hit=spans.filter(s=>s.end>hitStart&&s.start<hitEnd).map(s=>s.w);
+      if(hit.length)return (Math.min(...hit.map(w=>w.bbox.x0))+Math.max(...hit.map(w=>w.bbox.x1)))/2;
+      return row.words[0]?.cx||0;
+    };
+    const out={name:'',orders:null,ctr:null,creators:null,cart:null};
+    const found=[];
+    rows.forEach((row,ri)=>{
+      for(const key of Object.keys(rules)){
+        const re=new RegExp(rules[key].source,rules[key].flags);const match=re.exec(row.text);
+        if(!match)continue;
+        const x=findPhraseCenter(row,match);
+        const tail=row.text.slice(match.index+match[0].length);
+        const inline=parseNum(tail,key);
+        if(inline!==null&&(key!=='ctr'||/%|％/.test(tail)))out[key]=inline;
+        found.push({key,ri,x});
       }
     });
-    // Find the nearest numeric row below each label, constrained to its own half/card.
-    labels.forEach(label => {
-      if (parsed[label.key]!==null) return;
-      const otherXs=labels.filter(l=>l.ri===label.ri && l.key!==label.key).map(l=>l.x);
-      const nearestOther=otherXs.length ? Math.min(...otherXs.map(x=>Math.abs(x-label.x))) : Infinity;
-      for (let ri=label.ri+1; ri<Math.min(rows.length,label.ri+5); ri++) {
+    // For each label, select a number below it by horizontal distance, not by OCR reading order.
+    for(const label of found){
+      if(out[label.key]!==null)continue;
+      for(let ri=label.ri+1;ri<Math.min(rows.length,label.ri+6);ri++){
         const row=rows[ri];
-        if (Object.values(rules).some(rule=>rule.test(row.text))) break;
-        const n=numberFrom(row.text,label.key);
-        if (n===null) continue;
-        const rowX=(row.x0+row.x1)/2;
-        if (nearestOther!==Infinity && Math.abs(rowX-label.x)>=nearestOther) continue;
-        if (label.key==='ctr' && !/%|％/.test(row.text)) continue;
-        if (/[A-Za-zÀ-ÿ]{3,}/.test(row.text) && !/%|％/.test(row.text)) continue;
-        parsed[label.key]=n; break;
-      }
-    });
-    const allText=rows.map(r=>r.text);
-    const summary=allText.findIndex(t=>/\bringkasan\b/i.test(t));
-    let name='';
-    const badge=/\b(?:mall|power\s*shop|powershop|beli\s*lokal|belilokal|official\s*store|star\s*shop)\b/i;
-    if(summary>=0) {
-      for(let i=summary;i<rows.length;i++) {
-        const row=rows[i], m=badge.exec(row.text);
-        if(!m) continue;
-        const after=row.text.slice(m.index+m[0].length).replace(/^[\s:|·•\-–—]+/,'').trim();
-        if(after.length>=4 && !Object.values(rules).some(r=>r.test(after))) { name=after; break; }
-        // If the badge and title are on the same visual row but OCR separated them,
-        // take words to the right of the badge's bounding box.
-        const badgeWord=row.words.find(w=>badge.test(w.text));
-        if(badgeWord) {
-          const right=row.words.filter(w=>w.bbox.x0>=badgeWord.bbox.x1-2).map(w=>w.text).join(' ').trim();
-          if(right.length>=4 && !Object.values(rules).some(r=>r.test(right))) { name=right; break; }
-        }
-        for(let j=i+1;j<=Math.min(i+2,rows.length-1);j++) {
-          const t=rows[j].text;
-          if(badge.test(t)||Object.values(rules).some(r=>r.test(t))||/\bringkasan\b/i.test(t)) break;
-          if(t.length>=4 && t.length<=180 && !/^\d[\d.,]*$/.test(t)) { name=t; break; }
-        }
-        if(name) break;
+        if(Object.values(rules).some(re=>re.test(row.text)))break;
+        const candidates=row.words.map(w=>({w,n:parseNum(w.text,label.key)}))
+          .filter(x=>x.n!==null&&(label.key!=='ctr'||/%|％/.test(x.w.text)));
+        if(!candidates.length)continue;
+        candidates.sort((a,b)=>Math.abs(a.w.cx-label.x)-Math.abs(b.w.cx-label.x));
+        const pick=candidates[0];
+        // When two labels share the same row, don't let one card take the other card's number.
+        const peer=found.filter(x=>x.key!==label.key&&x.ri===label.ri).sort((a,b)=>Math.abs(a.x-label.x)-Math.abs(b.x-label.x))[0];
+        if(peer&&Math.abs(pick.w.cx-peer.x)<Math.abs(pick.w.cx-label.x))continue;
+        out[label.key]=pick.n;break;
       }
     }
-    name=name.replace(/^[•·|\-–—]+/,'').trim();
-    return {name, ...parsed};
+    const badge=/\b(?:mall|power\s*shop|powershop|beli\s*lokal|belilokal|official\s*store|star\s*shop)\b/i;
+    const summary=rows.findIndex(r=>/\bringkasan\b/i.test(r.text));
+    if(summary>=0){
+      for(let i=summary;i<rows.length;i++){
+        const row=rows[i],m=badge.exec(row.text);if(!m)continue;
+        const after=row.text.slice(m.index+m[0].length).replace(/^[\s:|·•\-–—]+/,'').trim();
+        if(after.length>=4&&!Object.values(rules).some(re=>re.test(after))){out.name=after;break;}
+        const badgeX=findPhraseCenter(row,m);
+        const right=row.words.filter(w=>w.cx>badgeX+2).map(w=>w.text).join(' ').trim();
+        if(right.length>=4&&!Object.values(rules).some(re=>re.test(right))){out.name=right;break;}
+        for(let j=i+1;j<=Math.min(i+2,rows.length-1);j++){
+          const t=rows[j].text;
+          if(badge.test(t)||Object.values(rules).some(re=>re.test(t))||/\bringkasan\b/i.test(t))break;
+          if(t.length>=4&&t.length<=180&&!/^\d[\d.,]*$/.test(t)){out.name=t;break;}
+        }
+        if(out.name)break;
+      }
+    }
+    out.name=out.name.replace(/^[•·|\-–—]+/,'').trim();
+    return out;
   }
 
   async function readAnalysisScreenshot() {
