@@ -995,6 +995,8 @@ function handleFreqChange(type) {
 
 function switchTab(tabName) {
 
+    if (!['tasks', 'notes', 'analysis', 'stats', 'settings'].includes(tabName)) tabName = 'tasks';
+
     if (!currentUser && tabName !== 'settings') {
         openLoginModal();
         return;
@@ -1009,6 +1011,9 @@ function switchTab(tabName) {
     if (targetTab) {
         targetTab.classList.remove('hidden');
     }
+
+    // Ingat tab aktif agar tetap sama setelah refresh / tarik layar ke bawah.
+    try { localStorage.setItem('dailyTaskActiveTab', tabName); } catch (err) {}
 
     ['tasks', 'notes', 'analysis', 'stats', 'settings'].forEach(n => {
 
