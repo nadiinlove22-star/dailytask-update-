@@ -708,7 +708,16 @@
       }
       // Use spatial word boxes for the 2x2 metric cards; fall back to text-only parsing
       // only when this OCR engine did not return usable coordinates.
-      const parsed = parseAnalysisScreenshotLayout(result && result.data) || parseAnalysisScreenshotText(rawOcrText);
+      const positioned = parseAnalysisScreenshotLayout(result && result.data);
+      const textParsed = parseAnalysisScreenshotText(rawOcrText);
+      // Coordinate parsing is primary; use text parsing only for fields the spatial parser could not confidently find.
+      const parsed = positioned ? {
+        name: positioned.name || textParsed.name,
+        orders: positioned.orders !== null ? positioned.orders : textParsed.orders,
+        ctr: positioned.ctr !== null ? positioned.ctr : textParsed.ctr,
+        creators: positioned.creators !== null ? positioned.creators : textParsed.creators,
+        cart: positioned.cart !== null ? positioned.cart : textParsed.cart
+      } : textParsed;
       closeAddProductModal();
       const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
       if (existing) openProductEditor(existing.id);
