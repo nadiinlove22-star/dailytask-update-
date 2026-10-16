@@ -730,7 +730,13 @@
     if (file.size > 12 * 1024 * 1024) { say('Ukuran gambar terlalu besar. Gunakan screenshot di bawah 12 MB.', 'text-rose-400'); return; }
     // Screenshot tetap boleh dibaca meskipun link belum ditempel. Link bisa diisi
     // setelah hasil OCR masuk ke formulir; jangan hentikan proses OCR di tahap ini.
-    const productUrl = safeProductUrl(urlInput && urlInput.value);
+    const pastedProductText = String(urlInput && urlInput.value || '').replace(/\s+/g, ' ').trim();
+    const pastedUrlMatch = pastedProductText.match(/https?:\/\/[^\s<>"']+/i);
+    const productUrl = safeProductUrl(pastedUrlMatch ? pastedUrlMatch[0].replace(/[),.;]+$/, '') : pastedProductText);
+    const pastedTitle = pastedUrlMatch
+      ? pastedProductText.slice(0, pastedProductText.indexOf(pastedUrlMatch[0])).trim()
+          .replace(/^[\s|—–:-]+|[\s|—–:-]+$/g, '').split(/\s+/).filter(Boolean).slice(0, 4).join(' ')
+      : '';
     if (preview) preview.classList.remove('hidden');
     if (img) img.src = URL.createObjectURL(file);
     if (status) status.textContent = 'Memuat OCR…';
@@ -781,6 +787,9 @@
       // and are surfaced for review. Text-only parsing is used only when coordinates
       // are unavailable altogether.
       const parsed = positioned || textParsed;
+      // When the paste field contains "product title + URL", the clipboard title is
+      // more reliable than OCR for the product name; keep it capped at four words.
+      if (pastedTitle) parsed.name = pastedTitle;
       const creatorCartPattern = rawOcrText.match(/(?:jumlah\s+kreator|jumlah\s+creator)[\s\S]{0,90}?(\d{2,4})\s+keranjang/i);
       if (creatorCartPattern) {
         const candidate = Number(creatorCartPattern[1]);
@@ -816,6 +825,7 @@
       // OCR must never leave stale values from a previously edited product in the form.
       // Clear first, then populate only fields confidently parsed from this screenshot.
       $('product-editor-name').value = parsed.name || '';
+      $('product-editor-url').value = productUrl || '';
       $('product-editor-orders').value = parsed.orders !== null ? parsed.orders : '';
       $('product-editor-ctr').value = parsed.ctr !== null ? parsed.ctr : '';
       $('product-editor-creators').value = parsed.creators !== null ? parsed.creators : '';
