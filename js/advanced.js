@@ -203,415 +203,132 @@
     }
   }
 
-  function renderFocusTab() {
-    const host = $('focus-task-list');
-    if (!host) return;
-    host.innerHTML = '';
-    if (!currentUser) {
-      host.innerHTML = '<p class="rounded-lg bg-amber-500/10 p-3 text-xs text-amber-200">Login untuk melihat daftar tugas fokus.</p>';
-      return;
-    }
-    const date = todayKey();
-    const list = activeTasks(date).filter(task => !isDone(task, date));
-    if (!list.length) {
-      host.innerHTML = '<p class="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">Semua tugas aktif hari ini selesai. Bagus! 🎉</p>';
-      return;
-    }
-    list.slice(0, 8).forEach(task => {
-      const row = document.createElement('div');
-      row.className = 'flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3';
-      const body = document.createElement('div');
-      body.className = 'min-w-0 flex-1';
-      const title = document.createElement('p');
-      title.className = 'break-words text-xs font-medium text-slate-100';
-      title.textContent = task.title || 'Tugas tanpa nama';
-      const meta = document.createElement('p');
-      meta.className = 'mt-1 text-[10px] text-slate-500';
-      meta.textContent = task.priority === 'high' ? 'Prioritas tinggi' : task.priority === 'low' ? 'Prioritas rendah' : 'Prioritas sedang';
-      body.append(title, meta);
-      const done = document.createElement('button');
-      done.type = 'button';
-      done.className = 'shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-semibold text-emerald-200';
-      done.textContent = 'Selesai';
-      done.addEventListener('click', () => {
-        if (typeof incrementTask === 'function') incrementTask(task.id, task.target || 1);
-        setTimeout(renderFocusTab, 100);
-      });
-      row.append(body, done);
-      host.appendChild(row);
+  // Analisa Produk disimpan di progressData agar tetap kompatibel dengan skema cloud yang ada.
+  function getAnalysisProducts() {
+    if (!progressData || typeof progressData !== 'object') return [];
+    if (!Array.isArray(progressData.__analysisProducts)) progressData.__analysisProducts = [];
+    return progressData.__analysisProducts;
+  }
+  const metricFields = [
+    { key: 'orders', label: 'Pesanan', weight: 0.40, higher: true },
+    { key: 'ctr', label: 'CTR', weight: 0.25, higher: true },
+    { key: 'creators', label: 'Kreator', weight: 0.15, higher: true },
+    { key: 'cart', label: 'Add to cart', weight: 0.20, higher: true }
+  ];
+  function safeProductUrl(value) {
+    try { const u = new URL(String(value || '').trim()); return ['https:', 'http:'].includes(u.protocol) ? u.href : ''; } catch (_) { return ''; }
+  }
+  function productScore(product, products) {
+    const valid = metricFields.filter(m => product.trend && product.trend[m.key] !== null && product.trend[m.key] !== undefined && product.trend[m.key] !== '');
+    if (!valid.length) return null;
+    let score = 0, weight = 0;
+    valid.forEach(m => {
+      const vals = products.map(p => p.trend && Number.isFinite(Number(p.trend[m.key])) && p.trend[m.key] !== '' ? Number(p.trend[m.key]) : null).filter(v => v !== null);
+      const max = Math.max(0, ...vals);
+      const normalized = max > 0 ? Math.max(0, Number(product.trend[m.key])) / max : 0;
+      score += normalized * m.weight; weight += m.weight;
     });
+    return weight ? Math.round(score / weight * 1000) / 10 : null;
   }
-
-  function ensurePomodoro() {
-    if ($('advanced-pomodoro')) return;
-    const settings = $('focus-pomodoro-host');
-    if (!settings) return;
-    const panel = document.createElement('section');
-    panel.id = 'advanced-pomodoro';
-    panel.className = 'rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-4';
-    panel.innerHTML = `
-      <div class="flex items-center justify-between"><div><p class="text-[10px] uppercase tracking-widest text-cyan-300">Mode fokus</p><h2 class="mt-1 text-sm font-bold text-white">Pomodoro</h2></div><span id="pomo-mode" class="text-[10px] text-slate-400">Fokus</span></div>
-      <p id="pomo-time" class="my-4 text-center font-mono text-4xl font-bold text-cyan-200">25:00</p>
-      <div class="grid grid-cols-3 gap-2">
-        <button id="pomo-start" type="button" class="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950">Mulai</button>
-        <button id="pomo-reset" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs">Reset</button>
-        <button id="pomo-break" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs">Istirahat</button>
-      </div>
-      <p class="mt-2 text-[10px] text-slate-500">Timer berjalan selama halaman tetap terbuka.</p>`;
-    settings.appendChild(panel);
-    $('pomo-start').addEventListener('click', togglePomodoro);
-    $('pomo-reset').addEventListener('click', () => resetPomodoro(pomo.mode));
-    $('pomo-break').addEventListener('click', () => resetPomodoro(pomo.mode === 'focus' ? 'break' : 'focus'));
-    renderPomodoro();
+  function productDateLabel(value) {
+    if (!value) return 'Data belum diinput';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? 'Update: ' + value : 'Update ' + d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
   }
-  function renderPomodoro() {
-    const time = $('pomo-time');
-    if (!time) return;
-    const m = Math.floor(pomo.remaining / 60).toString().padStart(2, '0');
-    const s = (pomo.remaining % 60).toString().padStart(2, '0');
-    time.textContent = `${m}:${s}`;
-    $('pomo-mode').textContent = pomo.mode === 'focus' ? 'Fokus' : 'Istirahat';
-    $('pomo-start').textContent = pomo.running ? 'Jeda' : 'Mulai';
-    $('pomo-break').textContent = pomo.mode === 'focus' ? 'Istirahat' : 'Kembali fokus';
+  function openProductEditor(id) {
+    const modal = $('product-editor-modal'); if (!modal) return;
+    const product = getAnalysisProducts().find(p => String(p.id) === String(id)) || null;
+    $('product-editor-title').textContent = product ? 'Edit produk' : 'Tambah produk';
+    $('product-editor-id').value = product ? product.id : '';
+    $('product-editor-name').value = product ? product.name || '' : '';
+    $('product-editor-url').value = product ? product.url || '' : '';
+    const trend = product && product.trend || {};
+    $('product-editor-orders').value = trend.orders ?? '';
+    $('product-editor-ctr').value = trend.ctr ?? '';
+    $('product-editor-creators').value = trend.creators ?? '';
+    $('product-editor-cart').value = trend.cart ?? '';
+    $('product-editor-date').textContent = productDateLabel(product && product.updatedAt);
+    $('product-editor-error').classList.add('hidden');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
   }
-  function resetPomodoro(mode = 'focus') {
-    if (pomo.timer) clearInterval(pomo.timer);
-    pomo.timer = null;
-    pomo.running = false;
-    pomo.mode = mode;
-    pomo.remaining = mode === 'focus' ? 25 * 60 : 5 * 60;
-    renderPomodoro();
+  function closeProductEditor() {
+    const modal = $('product-editor-modal'); if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
   }
-  function togglePomodoro() {
-    if (pomo.running) {
-      clearInterval(pomo.timer); pomo.timer = null; pomo.running = false; renderPomodoro(); return;
+  async function saveProductEditor(event) {
+    if (event) event.preventDefault();
+    const name = $('product-editor-name').value.trim();
+    const url = safeProductUrl($('product-editor-url').value);
+    const err = $('product-editor-error');
+    if (!name || !url) { err.textContent = 'Nama dan link produk yang valid wajib diisi.'; err.classList.remove('hidden'); return; }
+    const old = getAnalysisProducts().find(p => String(p.id) === String($('product-editor-id').value));
+    const raw = { orders:$('product-editor-orders').value, ctr:$('product-editor-ctr').value, creators:$('product-editor-creators').value, cart:$('product-editor-cart').value };
+    const hasNewMetrics = Object.values(raw).some(v => v.trim() !== '');
+    const hasOldMetrics = old && old.trend && Object.values(old.trend).some(v => v !== null && v !== undefined && v !== '');
+    const trend = {};
+    Object.keys(raw).forEach(k => { trend[k] = raw[k].trim() === '' ? null : Number(raw[k]); });
+    const item = old || { id: 'prod-' + Date.now() };
+    item.name = name; item.url = url;
+    if (hasNewMetrics || !hasOldMetrics) {
+      item.trend = trend;
+      item.updatedAt = hasNewMetrics ? new Date().toISOString() : null;
     }
-    pomo.running = true;
-    pomo.timer = setInterval(() => {
-      pomo.remaining = Math.max(0, pomo.remaining - 1);
-      if (pomo.remaining === 0) {
-        clearInterval(pomo.timer); pomo.timer = null; pomo.running = false;
-        if ('Notification' in window && Notification.permission === 'granted') new Notification('Daily Task', { body: pomo.mode === 'focus' ? 'Sesi fokus selesai. Saatnya istirahat.' : 'Istirahat selesai. Siap fokus lagi?' });
-        alert(pomo.mode === 'focus' ? 'Sesi fokus selesai. Saatnya istirahat!' : 'Istirahat selesai. Siap fokus lagi?');
-      }
-      renderPomodoro();
-    }, 1000);
-    renderPomodoro();
-  }
-
-  function ensureAiAssistant() {
-    if ($('advanced-ai')) return;
-    const settings = $('tab-settings');
-    if (!settings) return;
-    const panel = document.createElement('section');
-    panel.id = 'advanced-ai';
-    panel.className = 'rounded-2xl border border-violet-400/20 bg-slate-900/80 p-4';
-    panel.innerHTML = `
-      <p class="text-[10px] uppercase tracking-widest text-violet-300">Asisten perencanaan</p>
-      <h2 class="mt-1 text-sm font-bold text-white">AI Task Assistant</h2>
-      <p class="mt-1 text-[11px] leading-relaxed text-slate-400">Bantu pecah tujuan menjadi langkah kecil. Perlu Edge Function Supabase <code>daily-task-assistant</code> yang dikonfigurasi dengan kunci API di server.</p>
-      <textarea id="ai-task-prompt" rows="3" maxlength="2000" placeholder="Contoh: bantu susun jadwal belajar 2 jam..." class="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 p-3 text-xs text-white"></textarea>
-      <button id="ai-task-submit" type="button" class="mt-2 w-full rounded-lg bg-violet-500 px-3 py-2 text-xs font-bold text-white">Buat rencana</button>
-      <pre id="ai-task-result" class="mt-3 hidden whitespace-pre-wrap break-words rounded-lg bg-slate-950/70 p-3 text-xs text-slate-200"></pre>`;
-    settings.appendChild(panel);
-    $('ai-task-submit').addEventListener('click', requestAiPlan);
-  }
-  async function requestAiPlan() {
-    const prompt = ($('ai-task-prompt')?.value || '').trim();
-    const output = $('ai-task-result');
-    const button = $('ai-task-submit');
-    if (!prompt) { alert('Tulis tujuan atau kendala terlebih dahulu.'); return; }
-    if (typeof supabaseClient === 'undefined' || !supabaseClient || typeof currentUser === 'undefined' || !currentUser) { alert('Login diperlukan untuk menggunakan asisten AI.'); return; }
-    button.disabled = true; button.textContent = 'Menyusun...';
-    output.classList.remove('hidden'); output.textContent = 'Menghubungi asisten...';
-    try {
-      const { data, error } = await supabaseClient.functions.invoke('daily-task-assistant', {
-        body: { prompt: prompt.slice(0, 2000), tasks: (typeof tasks !== 'undefined' ? tasks : []).map(t => ({ title: String(t.title || '').slice(0, 120), priority: t.priority || 'medium', category: t.category || '' })).slice(0, 100) }
-      });
-      if (error) throw new Error('Edge Function belum tersedia atau gagal dihubungi.');
-      const answer = data && (data.answer || data.plan || data.message);
-      if (typeof answer !== 'string' || !answer.trim()) throw new Error('Respons AI tidak memiliki field answer/plan/message.');
-      output.textContent = answer;
-    } catch (err) {
-      const reason = String(err && err.message ? err.message : 'layanan AI belum tersedia');
-      output.textContent = 'AI online belum terhubung (' + reason + ').\\n\\nRencana sementara:\\n1. Tulis hasil akhir yang ingin dicapai.\\n2. Pecah menjadi tiga langkah kecil.\\n3. Kerjakan langkah pertama selama 25 menit.\\n4. Istirahat 5 menit, lalu lanjutkan langkah berikutnya.\\n5. Evaluasi hasil dan tentukan langkah selanjutnya.\\n\\nUntuk jawaban AI penuh, Edge Function daily-task-assistant harus aktif dan secret OPENAI_API_KEY disetel di Supabase.';
-    } finally {
-      button.disabled = false; button.textContent = 'Buat rencana';
+    const list = getAnalysisProducts();
+    if (!old) list.push(item);
+    progressData.__analysisProducts = list;
+    if (typeof saveData === 'function') {
+      const ok = await saveData();
+      if (!ok) { err.textContent = 'Gagal menyimpan ke cloud. Periksa koneksi lalu coba lagi.'; err.classList.remove('hidden'); return; }
     }
+    closeProductEditor(); renderAnalysisTab();
   }
-
-  async function requestNotificationPermission() {
-    const status = $('advanced-notification-status');
-    const button = $('advanced-enable-notifications');
-    try {
-      if (!('Notification' in window)) {
-        if (status) status.textContent = 'Notifikasi tidak didukung oleh lingkungan aplikasi ini. Coba buka melalui Chrome.';
-        else alert('Browser ini tidak mendukung notifikasi.');
-        return;
-      }
-      const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
-      if (permission === 'granted') {
-        if (status) status.textContent = 'Izin aktif. Pengingat hanya dicek saat aplikasi terbuka.';
-        if (button) button.textContent = 'Notifikasi aktif ✓';
-        checkReminders();
+  async function deleteAnalysisProduct(id) {
+    if (!confirm('Hapus produk ini?')) return;
+    progressData.__analysisProducts = getAnalysisProducts().filter(p => String(p.id) !== String(id));
+    if (typeof saveData === 'function') {
+      const ok = await saveData();
+      if (!ok) { alert('Gagal menyimpan penghapusan ke cloud.'); return; }
+    }
+    renderAnalysisTab();
+  }
+  function renderAnalysisTab() {
+    const host = $('analysis-products-list'); if (!host) return;
+    const all = getAnalysisProducts();
+    host.innerHTML = '';
+    const ranked = all.map(p => ({ product:p, score:productScore(p, all), hasData:!!(p.updatedAt && p.trend && metricFields.some(m => p.trend[m.key] !== null && p.trend[m.key] !== undefined && p.trend[m.key] !== '')) }))
+      .sort((a,b) => (b.hasData - a.hasData) || ((b.score ?? -1) - (a.score ?? -1)) || String(a.product.name).localeCompare(String(b.product.name)));
+    const summary = $('analysis-summary');
+    if (summary) summary.textContent = all.length ? ranked.filter(x=>x.hasData).length + ' produk dengan data · ' + ranked.filter(x=>!x.hasData).length + ' belum ada data tren' : 'Belum ada produk. Tambahkan produk pertama untuk mulai mencatat tren.';
+    if (!ranked.length) { host.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-xs text-slate-400">Belum ada produk. Tekan + Produk untuk menambahkan.</div>'; return; }
+    ranked.forEach((entry, idx) => {
+      const p = entry.product, card = document.createElement('section');
+      card.className = 'rounded-2xl border border-slate-800 bg-slate-900/80 p-3';
+      const head = document.createElement('div'); head.className='flex items-start gap-2';
+      const main = document.createElement('div'); main.className='min-w-0 flex-1 cursor-pointer'; main.title='Buka link produk';
+      const title = document.createElement('div'); title.className='flex items-center gap-2';
+      const rank = document.createElement('span'); rank.className='text-[10px] text-emerald-300'; rank.textContent=entry.hasData ? '#'+(idx+1) : '—';
+      const name = document.createElement('span'); name.className='text-sm font-bold text-white break-words'; name.textContent=p.name || 'Produk tanpa nama';
+      title.append(rank,name); main.appendChild(title);
+      const meta = document.createElement('p'); meta.className='mt-1 text-[10px] '+(entry.hasData?'text-slate-500':'text-amber-300'); meta.textContent=entry.hasData ? productDateLabel(p.updatedAt)+' · Skor '+entry.score+'/100' : (p.updatedAt ? 'Data tren tidak tersedia · belum ada metrik yang diinput' : 'Data belum diinput'); main.appendChild(meta);
+      main.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');});
+      const actions=document.createElement('div');actions.className='flex shrink-0 gap-1';
+      const edit=document.createElement('button');edit.type='button';edit.className='rounded-lg border border-slate-700 px-2 py-1.5 text-[10px] text-slate-300';edit.textContent='Edit';edit.addEventListener('click',()=>openProductEditor(p.id));
+      const open=document.createElement('button');open.type='button';open.className='rounded-lg bg-emerald-600/20 px-2 py-1.5 text-[10px] text-emerald-300';open.textContent='Buka';open.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');});
+      actions.append(edit,open);head.append(main,actions);card.appendChild(head);
+      if (entry.hasData) {
+        const metrics=document.createElement('div');metrics.className='mt-3 grid grid-cols-2 gap-2';
+        metricFields.forEach(m=>{const box=document.createElement('div');box.className='rounded-lg bg-slate-800/70 p-2';const label=document.createElement('p');label.className='text-[10px] text-slate-500';label.textContent=m.label;const val=document.createElement('p');val.className='mt-0.5 text-xs font-semibold text-slate-200';const v=p.trend[m.key];val.textContent=v===null||v===undefined||v===''?'Data tidak tersedia':(m.key==='ctr'?Number(v)+'%':Number(v).toLocaleString('id-ID'));box.append(label,val);metrics.appendChild(box);});
+        card.appendChild(metrics);
       } else {
-        if (status) status.textContent = 'Izin belum diberikan. Periksa izin notifikasi di Pengaturan Android.';
-        else alert('Izin notifikasi belum diberikan.');
+        const badge=document.createElement('p');badge.className='mt-2 rounded-lg bg-amber-500/10 p-2 text-[10px] text-amber-300';badge.textContent='Belum ada data tren. Tekan Edit untuk memasukkan data 7 hari terakhir.';card.appendChild(badge);
       }
-    } catch (_) {
-      if (status) status.textContent = 'Permintaan izin tidak didukung di WebView ini. Coba gunakan Chrome atau periksa Pengaturan Android.';
-      else alert('Tidak dapat meminta izin notifikasi di aplikasi ini.');
-    }
-  }
-  function ensureReminderSettings() {
-    const settings = $('tab-settings');
-    if (!settings || $('advanced-reminder-settings')) return;
-    const panel = document.createElement('section');
-    panel.id = 'advanced-reminder-settings';
-    panel.className = 'rounded-2xl border border-emerald-400/20 bg-slate-900/80 p-4';
-    panel.innerHTML = `<h2 class="text-sm font-bold text-white">Pengingat browser</h2><p class="mt-1 text-[11px] text-slate-400">Pengingat dicek saat Daily Task terbuka. Notifikasi mungkin tidak muncul jika aplikasi ditutup atau dibatasi Android.</p><p id="advanced-notification-status" class="mt-2 text-xs text-slate-300"></p><button id="advanced-enable-notifications" type="button" class="mt-3 w-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200">Aktifkan notifikasi</button>`;
-    settings.appendChild(panel);
-    const status = $('advanced-notification-status');
-    const button = $('advanced-enable-notifications');
-    if (status && 'Notification' in window) {
-      status.textContent = Notification.permission === 'granted' ? 'Izin notifikasi sudah aktif.' : Notification.permission === 'denied' ? 'Izin diblokir. Aktifkan dari Pengaturan Android/browser.' : 'Izin notifikasi belum diminta.';
-      if (Notification.permission === 'granted' && button) button.textContent = 'Notifikasi aktif ✓';
-    } else if (status) {
-      status.textContent = 'API notifikasi tidak tersedia di lingkungan aplikasi ini.';
-    }
-    $('advanced-enable-notifications').addEventListener('click', requestNotificationPermission);
-  }
-  function checkReminders() {
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    const now = new Date();
-    const date = todayKey();
-    const minute = `${date} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    if (minute === lastReminderMinute) return;
-    lastReminderMinute = minute;
-    for (const task of activeTasks(date)) {
-      if (task.reminderEnabled && task.reminderTime === minute.slice(11) && !isDone(task, date)) {
-        new Notification('Daily Task — Pengingat', { body: task.title || 'Ada tugas yang menunggu.', tag: `task-${task.id}-${date}` });
-      }
-    }
-  }
-
-  function decorateTaskList() {
-    const container = $('todo-list');
-    if (!container || typeof tasks === 'undefined' || !Array.isArray(tasks)) return;
-    // Add priority chips without rebuilding the existing task renderer.
-    container.querySelectorAll('[data-task-id], [data-id]').forEach(node => {
-      const id = Number(node.getAttribute('data-task-id') || node.getAttribute('data-id'));
-      const task = (typeof tasks !== 'undefined' ? tasks : []).find(t => Number(t.id) === id);
-      if (!task || node.querySelector('.advanced-priority-chip')) return;
-      const titleNode = node.querySelector('.font-medium, .task-title');
-      if (!titleNode) return;
-      const chip = document.createElement('span');
-      chip.className = 'advanced-priority-chip ml-2 rounded px-1.5 py-0.5 text-[9px]';
-      const styles = { high: 'bg-rose-500/15 text-rose-300', medium: 'bg-amber-500/15 text-amber-200', low: 'bg-sky-500/15 text-sky-200' };
-      chip.className += ` ${styles[task.priority] || styles.medium}`;
-      chip.textContent = `${task.priority === 'high' ? 'Prioritas tinggi' : task.priority === 'low' ? 'Prioritas rendah' : 'Prioritas sedang'}${task.category ? ` · ${task.category}` : ''}`;
-      titleNode.appendChild(chip);
-    });
-  }
-
-
-  // Notes are stored alongside progress data so they sync through the existing cloud save and backup.
-  function getNotes() {
-    if (typeof progressData === 'undefined' || !progressData) return [];
-    if (!Array.isArray(progressData.__notes)) progressData.__notes = [];
-    return progressData.__notes;
-  }
-  async function saveNotes() {
-    if (typeof progressData !== 'undefined' && progressData) {
-      progressData.__notes = getNotes();
-      if (typeof saveData === 'function') await saveData();
-    }
-    renderNotes();
-  }
-  function renderNotes() {
-    const host = $('notes-list');
-    if (!host) return;
-    host.innerHTML = '';
-    const notes = getNotes();
-    if (!notes.length) {
-      const empty = document.createElement('div');
-      empty.className = 'rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-6 text-center';
-      empty.innerHTML = '<div class="text-2xl mb-2">📝</div><p class="text-sm font-semibold text-slate-200">Belum ada catatan</p><p class="mt-1 text-xs text-slate-500">Simpan teks dan kumpulan link favoritmu di sini.</p>';
-      host.appendChild(empty);
-      return;
-    }
-    notes.forEach((note, index) => {
-      const card = document.createElement('section');
-      card.className = 'rounded-2xl border border-slate-800 bg-slate-900/80 p-3 flex items-center gap-3 shadow-sm';
-      const icon = document.createElement('div');
-      icon.className = 'shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-300';
-      icon.textContent = '🗒️';
-      const main = document.createElement('div');
-      main.className = 'flex-1 min-w-0';
-      const name = document.createElement('p');
-      name.className = 'text-sm font-semibold text-slate-100 break-words';
-      name.textContent = note.name || 'Catatan tanpa nama';
-      const meta = document.createElement('p');
-      meta.className = 'mt-1 text-[11px] text-slate-500';
-      const chars = (note.content || '').length;
-      const links = Math.max(0, ((note.content || '').split('http://').length - 1) + ((note.content || '').split('https://').length - 1));
-      meta.textContent = (chars ? chars.toLocaleString('id-ID') + ' karakter' : 'Belum ada isi') + (links ? ' · ' + links + '+ tautan' : '');
-      main.append(name, meta);
-      const actions = document.createElement('div');
-      actions.className = 'flex shrink-0 items-center gap-1.5';
-      const copy = document.createElement('button');
-      copy.type = 'button';
-      copy.className = 'rounded-xl bg-emerald-500/15 border border-emerald-500/25 px-3 py-2 text-xs font-semibold text-emerald-300 active:scale-95';
-      copy.textContent = 'Salin';
-      copy.title = 'Salin seluruh isi catatan';
-      copy.addEventListener('click', () => copyNote(note.id));
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'rounded-xl bg-slate-800 px-2.5 py-2 text-xs text-slate-200 active:scale-95';
-      edit.textContent = '✏️';
-      edit.title = 'Edit catatan';
-      edit.addEventListener('click', () => editNote(note.id));
-      const more = document.createElement('details');
-      more.className = 'relative';
-      const summary = document.createElement('summary');
-      summary.className = 'list-none cursor-pointer rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 active:scale-95';
-      summary.textContent = '⋮';
-      const menu = document.createElement('div');
-      menu.className = 'absolute right-0 top-10 z-20 flex min-w-32 flex-col gap-1 rounded-xl border border-slate-700 bg-slate-950 p-1.5 shadow-xl';
-      const makeMenuButton = (label, title, action, disabled) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'rounded-lg px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-30';
-        b.textContent = label;
-        b.title = title;
-        b.disabled = !!disabled;
-        b.addEventListener('click', () => { more.open = false; action(); });
-        return b;
-      };
-      menu.append(
-        makeMenuButton('↑ Pindah ke atas', 'Pindah ke atas', () => moveNote(note.id, -1), index === 0),
-        makeMenuButton('↓ Pindah ke bawah', 'Pindah ke bawah', () => moveNote(note.id, 1), index === notes.length - 1),
-        makeMenuButton('🗑 Hapus', 'Hapus catatan', () => deleteNote(note.id), false)
-      );
-      more.append(summary, menu);
-      actions.append(copy, edit, more);
-      card.append(icon, main, actions);
+      const del=document.createElement('button');del.type='button';del.className='mt-2 text-[10px] text-rose-400';del.textContent='Hapus produk';del.addEventListener('click',()=>deleteAnalysisProduct(p.id));card.appendChild(del);
       host.appendChild(card);
     });
   }
-  let editingNoteId = null;
-  function openNoteEditor(note) {
-    const modal = $('note-editor-modal');
-    const nameInput = $('note-editor-name');
-    const contentInput = $('note-editor-content');
-    const title = $('note-editor-title');
-    const error = $('note-editor-error');
-    if (!modal || !nameInput || !contentInput) return;
-    editingNoteId = note ? note.id : null;
-    if (title) title.textContent = note ? 'Edit Catatan' : 'Tambah Catatan';
-    nameInput.value = note ? (note.name || '') : '';
-    contentInput.value = note ? (note.content || '') : '';
-    if (error) { error.textContent = ''; error.classList.add('hidden'); }
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    setTimeout(() => nameInput.focus(), 50);
-  }
-  function closeNoteEditor() {
-    const modal = $('note-editor-modal');
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    editingNoteId = null;
-  }
-  async function saveNoteEditor() {
-    const nameInput = $('note-editor-name');
-    const contentInput = $('note-editor-content');
-    const error = $('note-editor-error');
-    const name = nameInput ? nameInput.value.trim() : '';
-    const content = contentInput ? contentInput.value : '';
-    if (!name) {
-      if (error) { error.textContent = 'Nama catatan wajib diisi.'; error.classList.remove('hidden'); }
-      return;
-    }
-    const notes = getNotes();
-    if (editingNoteId !== null) {
-      const note = notes.find(n => String(n.id) === String(editingNoteId));
-      if (note) { note.name = name; note.content = content; }
-    } else {
-      notes.push({ id: Date.now(), name, content });
-    }
-    closeNoteEditor();
-    await saveNotes();
-    showNotesFeedback('Catatan berhasil disimpan.');
-  }
-  function showNotesFeedback(message) {
-    const el = $('notes-feedback');
-    if (!el) return;
-    el.textContent = message;
-    el.classList.remove('hidden');
-  }
-  function addNote() { openNoteEditor(null); }
-  function editNote(id) {
-    const note = getNotes().find(n => String(n.id) === String(id));
-    if (note) openNoteEditor(note);
-  }
-  window.addNote = addNote;
-  window.renderNotes = renderNotes;
-  window.closeNoteEditor = closeNoteEditor;
-  window.saveNoteEditor = saveNoteEditor;
-
-  async function copyNote(id) {
-    const index = getNotes().findIndex(n => String(n.id) === String(id));
-    if (index < 0) return;
-    const note = getNotes()[index];
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(note.content || '');
-      } else {
-        const area = document.createElement('textarea');
-        area.value = note.content || '';
-        area.style.position = 'fixed';
-        area.style.opacity = '0';
-        area.setAttribute('readonly', '');
-        document.body.appendChild(area);
-        area.select();
-        const ok = document.execCommand('copy');
-        area.remove();
-        if (!ok) throw new Error('copy failed');
-      }
-
-      // Reorder only after the clipboard operation succeeds.
-      const currentIndex = getNotes().findIndex(n => String(n.id) === String(id));
-      if (currentIndex >= 0 && currentIndex < getNotes().length - 1) {
-        const [copiedNote] = getNotes().splice(currentIndex, 1);
-        getNotes().push(copiedNote);
-        await saveNotes();
-        showNotesFeedback('"' + note.name + '" berhasil disalin dan dipindahkan ke paling bawah.');
-      } else {
-        showNotesFeedback('Isi catatan "' + note.name + '" berhasil disalin.');
-      }
-    } catch (_) {
-      showNotesFeedback('Gagal menyalin. Catatan tidak dipindahkan. Periksa izin clipboard atau coba buka lewat browser.');
-    }
-  }
-  function moveNote(id, direction) {
-    const notes = getNotes();
-    const i = notes.findIndex(n => String(n.id) === String(id));
-    const j = i + direction;
-    if (i < 0 || j < 0 || j >= notes.length) return;
-    [notes[i], notes[j]] = [notes[j], notes[i]];
-    saveNotes();
-  }
-  function deleteNote(id) {
-    const note = getNotes().find(n => String(n.id) === String(id));
-    if (!note) return;
-    const ok = window.confirm ? window.confirm('Hapus catatan "' + note.name + '"?') : false;
-    if (!ok) { showNotesFeedback('Penghapusan dibatalkan.'); return; }
-    progressData.__notes = getNotes().filter(n => String(n.id) !== String(id));
-    saveNotes();
-  }
-  window.addNote = addNote;
-  window.renderNotes = renderNotes;
+  window.openProductEditor = openProductEditor;
+  window.closeProductEditor = closeProductEditor;
+  window.saveProductEditor = saveProductEditor;
+  window.renderAnalysisTab = renderAnalysisTab;
 
   function init() {
     if (initialized) return;
@@ -620,8 +337,7 @@
     addTaskFields('new');
     addTaskFields('edit');
     enhanceSaveFunctions();
-    ensurePomodoro();
-    renderFocusTab();
+    renderAnalysisTab();
     ensureAiAssistant();
     ensureReminderSettings();
     renderDashboard();
