@@ -364,15 +364,17 @@
       const date=document.createElement('div'); date.className='mt-0.5 whitespace-normal break-words text-[9px] leading-snug text-slate-500'; date.textContent=entry.hasData?productDateLabel(p.updatedAt):'Metrik belum tersedia · '+(p.url?new URL(p.url).hostname:'link belum tersedia');
       info.append(name,date); top.append(rank,info);
       const score=document.createElement('span'); score.className='shrink-0 rounded-md px-1.5 py-1 text-[10px] font-extrabold '+(entry.score===null?'bg-amber-500/10 text-amber-300':entry.score>=80?'bg-emerald-500/15 text-emerald-300':entry.score>=65?'bg-yellow-500/15 text-yellow-300':'bg-rose-500/15 text-rose-300'); score.textContent=entry.score===null?'—':entry.score+'/100'; top.append(score); card.append(top);
-      const metrics=document.createElement('div'); metrics.className='mt-2 grid grid-cols-2 gap-1';
-      [['CTR',compactMetric(t.ctr,'ctr')],['Pesanan',compactMetric(t.orders,'orders')],['Tambah ke keranjang',compactMetric(t.cart,'cart')],['Jumlah kreator',compactMetric(t.creators,'creators')]].forEach(([label,value])=>{
-        const cell=document.createElement('div'); cell.className='min-w-0 rounded-md bg-slate-800/70 px-2 py-1.5';
-        const l=document.createElement('div'); l.className='whitespace-normal break-words text-[9px] leading-tight text-slate-500'; l.textContent=label;
-        const v=document.createElement('div'); v.className='mt-0.5 whitespace-normal break-words text-[11px] leading-tight font-semibold text-slate-200'; v.textContent=value;
-        cell.append(l,v); metrics.appendChild(cell);
+      const metrics=document.createElement('div'); metrics.className='mt-2 min-w-0';
+      const metricRow=document.createElement('div'); metricRow.className='grid grid-cols-4 gap-1 border-b border-slate-800 pb-1';
+      [['CTR',compactMetric(t.ctr,'ctr')],['Pesanan',compactMetric(t.orders,'orders')],['Jumlah Kreator',compactMetric(t.creators,'creators')],['Add to Cart',compactMetric(t.cart,'cart')]].forEach(([label,value])=>{
+        const cell=document.createElement('div'); cell.className='min-w-0 text-center';
+        const l=document.createElement('div'); l.className='whitespace-normal break-words text-[8px] leading-tight text-slate-500'; l.textContent=label;
+        const v=document.createElement('div'); v.className='mt-1 whitespace-normal break-words text-[10px] leading-tight font-semibold text-slate-200'; v.textContent=value;
+        cell.append(l,v); metricRow.appendChild(cell);
       });
+      metrics.appendChild(metricRow);
       card.append(metrics);
-      const foot=document.createElement('div'); foot.className='mt-2 flex min-w-0 items-start justify-between gap-2';
+      const foot=document.createElement('div'); foot.className='mt-1.5 flex min-w-0 items-start justify-between gap-2';
       const statusWrap=document.createElement('div'); statusWrap.className='min-w-0 flex-1';
       const st=document.createElement('div'); st.className='whitespace-normal break-words text-[9px] leading-tight font-semibold '+status.color; st.textContent=status.label;
       const note=document.createElement('div'); note.className='whitespace-normal break-words text-[9px] leading-tight text-slate-500'; note.textContent=status.note;
