@@ -672,15 +672,20 @@
         if(otherMetric)break;
         // Ignore further fragments of the same label, but do not treat them as data.
         if(rules[label.key].test(row.text))continue;
+        if(unrelatedMetric.test(row.text))break;
+        // Change indicators (▲/▼ and their values) are a separate row beneath the
+        // main metric. Never treat that row as the metric value itself.
+        if(/[▲▼▴▾↑↓]/.test(row.text) || /\b(?:naik|turun|perubahan|change)\b/i.test(row.text)) continue;
         const candidates=row.words.map(w=>({w,n:parseNum(w.text,label.key)}))
           .filter(x=>x.n!==null&&(label.key!=='ctr'||/%|％/.test(x.w.text))
-            // Counts of creators/orders/cart buyers must be whole numbers; reject promo prices such as Rp2,5jt.
-            &&(label.key==='ctr'||!['orders','creators','cart'].includes(label.key)||Number.isInteger(x.n)));
-        if(unrelatedMetric.test(row.text))break;
+            &&(label.key==='ctr'||!['orders','creators','cart'].includes(label.key)||Number.isInteger(x.n))
+            // The value belongs directly below its label in the same card column.
+            &&Math.abs(x.w.cx-anchorX)<=Math.max(90,(row.words.reduce((m,w)=>Math.max(m,w.bbox.x1),0)-row.words.reduce((m,w)=>Math.min(m,w.bbox.x0),Infinity))*0.38));
         if(!candidates.length)continue;
         candidates.sort((a,b)=>{
-          const dx=Math.abs(a.w.cx-anchorX)-Math.abs(b.w.cx-anchorX);
-          return Math.abs(dx)>1 ? dx : a.w.bbox.y0-b.w.bbox.y0;
+          const dy=a.w.bbox.y0-b.w.bbox.y0;
+          if(Math.abs(dy)>1)return dy;
+          return Math.abs(a.w.cx-anchorX)-Math.abs(b.w.cx-anchorX);
         });
         const pick=candidates[0];
         // Reject a number clearly closer to a neighboring metric card's label.
