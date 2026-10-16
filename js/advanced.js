@@ -203,9 +203,48 @@
     }
   }
 
+  function renderFocusTab() {
+    const host = $('focus-task-list');
+    if (!host) return;
+    host.innerHTML = '';
+    if (!currentUser) {
+      host.innerHTML = '<p class="rounded-lg bg-amber-500/10 p-3 text-xs text-amber-200">Login untuk melihat daftar tugas fokus.</p>';
+      return;
+    }
+    const date = todayKey();
+    const list = activeTasks(date).filter(task => !isDone(task, date));
+    if (!list.length) {
+      host.innerHTML = '<p class="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">Semua tugas aktif hari ini selesai. Bagus! 🎉</p>';
+      return;
+    }
+    list.slice(0, 8).forEach(task => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3';
+      const body = document.createElement('div');
+      body.className = 'min-w-0 flex-1';
+      const title = document.createElement('p');
+      title.className = 'break-words text-xs font-medium text-slate-100';
+      title.textContent = task.title || 'Tugas tanpa nama';
+      const meta = document.createElement('p');
+      meta.className = 'mt-1 text-[10px] text-slate-500';
+      meta.textContent = task.priority === 'high' ? 'Prioritas tinggi' : task.priority === 'low' ? 'Prioritas rendah' : 'Prioritas sedang';
+      body.append(title, meta);
+      const done = document.createElement('button');
+      done.type = 'button';
+      done.className = 'shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-semibold text-emerald-200';
+      done.textContent = 'Selesai';
+      done.addEventListener('click', () => {
+        if (typeof incrementTask === 'function') incrementTask(task.id, task.target || 1);
+        setTimeout(renderFocusTab, 100);
+      });
+      row.append(body, done);
+      host.appendChild(row);
+    });
+  }
+
   function ensurePomodoro() {
     if ($('advanced-pomodoro')) return;
-    const settings = $('tab-settings');
+    const settings = $('focus-pomodoro-host');
     if (!settings) return;
     const panel = document.createElement('section');
     panel.id = 'advanced-pomodoro';
@@ -219,7 +258,7 @@
         <button id="pomo-break" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs">Istirahat</button>
       </div>
       <p class="mt-2 text-[10px] text-slate-500">Timer berjalan selama halaman tetap terbuka.</p>`;
-    settings.insertBefore(panel, settings.firstChild);
+    settings.appendChild(panel);
     $('pomo-start').addEventListener('click', togglePomodoro);
     $('pomo-reset').addEventListener('click', () => resetPomodoro(pomo.mode));
     $('pomo-break').addEventListener('click', () => resetPomodoro(pomo.mode === 'focus' ? 'break' : 'focus'));
@@ -582,6 +621,7 @@
     addTaskFields('edit');
     enhanceSaveFunctions();
     ensurePomodoro();
+    renderFocusTab();
     ensureAiAssistant();
     ensureReminderSettings();
     renderDashboard();
