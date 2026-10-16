@@ -566,8 +566,9 @@
     const say = (message, kind='text-slate-400') => { if(feedback){feedback.textContent=message;feedback.className='mt-2 text-[10px] '+kind;} };
     if (!file || !/^image\//i.test(file.type)) { say('Pilih screenshot berupa gambar terlebih dahulu.', 'text-rose-400'); return; }
     if (file.size > 12 * 1024 * 1024) { say('Ukuran gambar terlalu besar. Gunakan screenshot di bawah 12 MB.', 'text-rose-400'); return; }
+    // Screenshot tetap boleh dibaca meskipun link belum ditempel. Link bisa diisi
+    // setelah hasil OCR masuk ke formulir; jangan hentikan proses OCR di tahap ini.
     const productUrl = safeProductUrl(urlInput && urlInput.value);
-    if (!productUrl) { say('Tempel link produk terlebih dahulu agar screenshot tersimpan pada produk yang benar.', 'text-rose-400'); if(urlInput) urlInput.focus(); return; }
     if (preview) preview.classList.remove('hidden');
     if (img) img.src = URL.createObjectURL(file);
     if (status) status.textContent = 'Memuat OCR…';
@@ -580,13 +581,13 @@
       });
       const parsed = parseAnalysisScreenshotText(result && result.data && result.data.text);
       closeAddProductModal();
-      const existing = getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl);
+      const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
       if (existing) openProductEditor(existing.id);
       else {
         openProductEditor();
         $('product-editor-id').value = '';
-        $('product-editor-url').value = productUrl;
-        $('product-editor-name').value = parsed.name || productNameFromUrl(productUrl) || '';
+        $('product-editor-url').value = productUrl || '';
+        $('product-editor-name').value = parsed.name || (productUrl ? productNameFromUrl(productUrl) : '') || '';
       }
       if (parsed.name && !$('product-editor-name').value.trim()) $('product-editor-name').value = parsed.name;
       if (parsed.orders !== null) $('product-editor-orders').value = parsed.orders;
@@ -594,7 +595,7 @@
       if (parsed.creators !== null) $('product-editor-creators').value = parsed.creators;
       if (parsed.cart !== null) $('product-editor-cart').value = parsed.cart;
       const found = [parsed.name ? 'nama' : '', parsed.orders !== null ? 'pesanan' : '', parsed.ctr !== null ? 'CTR' : '', parsed.creators !== null ? 'kreator' : '', parsed.cart !== null ? 'add to cart' : ''].filter(Boolean);
-      const message = found.length ? 'Terbaca: ' + found.join(', ') + '. Periksa hasilnya lalu tekan Simpan.' : 'Gambar berhasil dibaca, tetapi nama/metrik belum dikenali. Isi atau koreksi formulir secara manual sebelum menyimpan.';
+      const message = (found.length ? 'Terbaca: ' + found.join(', ') + '. Periksa hasilnya lalu tekan Simpan.' : 'Gambar berhasil dibaca, tetapi nama/metrik belum dikenali. Isi atau koreksi formulir secara manual sebelum menyimpan.') + (productUrl ? '' : ' Link produk belum diisi; tempel link di formulir sebelum menyimpan.');
       if (status) status.textContent = message;
       say(message, found.length ? 'text-emerald-300' : 'text-amber-300');
       if (!found.length) $('product-editor-error').textContent = 'OCR belum menemukan metrik yang dikenali. Periksa dan isi data dari screenshot secara manual.';
