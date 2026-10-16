@@ -389,14 +389,15 @@
     const button = document.querySelector('button[onclick="addProductFromPastedLink()"]');
     if (button) { button.disabled=true; button.textContent='Mencari…'; }
     say('Sedang mencoba membaca nama dan metadata dari halaman produk…');
-    let metadata = null;
+    let metadata = null, metadataError = '';
     try {
       if (typeof supabaseClient !== 'undefined' && supabaseClient && supabaseClient.functions) {
         const result = await supabaseClient.functions.invoke('product-metadata', { body: { url } });
         if (!result.error && result.data && result.data.ok) metadata = result.data;
-        else if (result.error) console.warn('Metadata produk:', result.error.message || result.error);
+        else if (result.error) { metadataError = result.error.message || 'Permintaan metadata gagal.'; console.warn('Metadata produk:', metadataError); }
+        else if (result.data && result.data.error) metadataError = result.data.error;
       }
-    } catch (e) { console.warn('Metadata produk tidak tersedia:', e); }
+    } catch (e) { metadataError = String(e && e.message || 'Koneksi metadata tidak tersedia.'); console.warn('Metadata produk tidak tersedia:', e); }
     const guessedName = productNameFromUrl(url);
     const item = {
       id:'prod-'+Date.now(),
@@ -421,7 +422,7 @@
     if (metadata && metadata.title) {
       say('Nama produk berhasil diambil otomatis. Statistik performa tidak disediakan oleh halaman publik; perlu API/data resmi platform.', 'text-emerald-300');
     } else {
-      say('Link tersimpan, tetapi halaman tidak menyediakan judul yang bisa dibaca. Isi nama lewat Edit; metrik performa perlu API/data resmi.', 'text-amber-300');
+      say('Link tersimpan, tetapi nama otomatis gagal dibaca. '+(metadataError ? metadataError+' ' : '')+'TikTok mungkin membatasi akses; ubah nama lewat Edit. Statistik perlu akses API resmi.', 'text-amber-300');
     }
     if (button) {button.disabled=false;button.textContent='Tambah';}
   }
