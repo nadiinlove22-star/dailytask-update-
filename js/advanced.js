@@ -382,34 +382,48 @@
   async function addProductFromPastedLink() {
     const input = $('analysis-paste-url'), feedback = $('analysis-paste-feedback');
     const url = safeProductUrl(input && input.value);
-    if (!url) { if(feedback){feedback.textContent='Tempel link produk yang valid dulu.';feedback.className='mt-2 text-[10px] text-rose-400';} return; }
+    const say = (message, kind='text-slate-500') => { if(feedback){feedback.textContent=message;feedback.className='mt-2 text-[10px] '+kind;} };
+    if (!url) { say('Tempel link produk HTTPS yang valid dulu.', 'text-rose-400'); return; }
     const existing = getAnalysisProducts().find(p => safeProductUrl(p.url) === url);
-    if (existing) { if(feedback){feedback.textContent='Link ini sudah ada di daftar.';feedback.className='mt-2 text-[10px] text-amber-300';} openProductEditor(existing.id); return; }
+    if (existing) { say('Link ini sudah ada di daftar. Membuka edit produk.', 'text-amber-300'); openProductEditor(existing.id); return; }
+    const button = document.querySelector('button[onclick="addProductFromPastedLink()"]');
+    if (button) { button.disabled=true; button.textContent='Mencari…'; }
+    say('Sedang mencoba membaca nama dan metadata dari halaman produk…');
+    let metadata = null;
+    try {
+      if (typeof supabaseClient !== 'undefined' && supabaseClient && supabaseClient.functions) {
+        const result = await supabaseClient.functions.invoke('product-metadata', { body: { url } });
+        if (!result.error && result.data && result.data.ok) metadata = result.data;
+        else if (result.error) console.warn('Metadata produk:', result.error.message || result.error);
+      }
+    } catch (e) { console.warn('Metadata produk tidak tersedia:', e); }
     const guessedName = productNameFromUrl(url);
-    const item = { id:'prod-'+Date.now(), name:guessedName || 'Produk baru · '+new URL(url).hostname, url, trend:{orders:null,ctr:null,creators:null,cart:null}, updatedAt:null };
+    const item = {
+      id:'prod-'+Date.now(),
+      name:(metadata && metadata.title) || guessedName || 'Produk baru · '+new URL(url).hostname,
+      url,
+      trend:{orders:null,ctr:null,creators:null,cart:null},
+      updatedAt:null,
+      metadata: metadata ? {description:metadata.description||'',image:metadata.image||'',price:metadata.price||'',currency:metadata.currency||''} : null
+    };
     getAnalysisProducts().push(item);
     if (typeof saveData === 'function') {
       const ok = await saveData();
-      if (!ok) { progressData.__analysisProducts = getAnalysisProducts().filter(p=>String(p.id)!==String(item.id)); if(feedback){feedback.textContent='Gagal menyimpan. Periksa koneksi lalu coba lagi.';feedback.className='mt-2 text-[10px] text-rose-400';} return; }
+      if (!ok) {
+        progressData.__analysisProducts = getAnalysisProducts().filter(p=>String(p.id)!==String(item.id));
+        say('Gagal menyimpan produk. Periksa koneksi lalu coba lagi.', 'text-rose-400');
+        if (button) {button.disabled=false;button.textContent='Tambah';}
+        return;
+      }
     }
     input.value='';
-    if(feedback){feedback.textContent='Link ditambahkan. Nama otomatis diambil dari link jika tersedia; CTR, pesanan, kreator, dan add-to-cart perlu data resmi/manual.';feedback.className='mt-2 text-[10px] text-emerald-300';}
     renderAnalysisTab();
-    // TikTok's public oEmbed can provide a title for some public URLs; most shop metrics are not exposed by product links.
-    if (/tiktok\.com$/i.test(new URL(url).hostname) || /\.tiktok\.com$/i.test(new URL(url).hostname)) {
-      try {
-        const response = await fetch('https://www.tiktok.com/oembed?url='+encodeURIComponent(url), {headers:{'Accept':'application/json'}});
-        if (response.ok) {
-          const data = await response.json();
-          const title = String(data.title || '').trim().slice(0,120);
-          if (title && (item.name.startsWith('Produk baru ·') || item.name === guessedName)) {
-            item.name = title;
-            await saveData();
-            renderAnalysisTab();
-          }
-        }
-      } catch (_) { /* CORS/network/platform restrictions: keep the pasted link and fallback title. */ }
+    if (metadata && metadata.title) {
+      say('Nama produk berhasil diambil otomatis. Statistik performa tidak disediakan oleh halaman publik; perlu API/data resmi platform.', 'text-emerald-300');
+    } else {
+      say('Link tersimpan, tetapi halaman tidak menyediakan judul yang bisa dibaca. Isi nama lewat Edit; metrik performa perlu API/data resmi.', 'text-amber-300');
     }
+    if (button) {button.disabled=false;button.textContent='Tambah';}
   }
   window.addProductFromPastedLink = addProductFromPastedLink;
   window.openProductEditor = openProductEditor;
