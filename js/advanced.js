@@ -790,11 +790,9 @@
       // When the paste field contains "product title + URL", the clipboard title is
       // more reliable than OCR for the product name; keep it capped at four words.
       if (pastedTitle) parsed.name = pastedTitle;
-      const creatorCartPattern = rawOcrText.match(/(?:jumlah\s+kreator|jumlah\s+creator)[\s\S]{0,90}?(\d{2,4})\s+keranjang/i);
-      if (creatorCartPattern) {
-        const candidate = Number(creatorCartPattern[1]);
-        if (Number.isInteger(candidate) && candidate >= 1) parsed.creators = candidate;
-      }
+      // Do not infer creator count from flattened text: OCR may place the delta (+7)
+      // between "Jumlah kreator" and the cart label. Keep the coordinate-based value
+      // (e.g. 1,1K => 1100) instead of overwriting it with the change indicator.
       if (!parsed.name && headerText.trim()) {
         const headerParsed = parseAnalysisScreenshotText(headerText);
         if (headerParsed.name) parsed.name = headerParsed.name;
