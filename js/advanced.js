@@ -470,14 +470,14 @@
       .map(s => s.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim())
       .filter(Boolean);
     const labelRules = {
-      ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
       orders: /\b(?:pesanan|orders?|sold|terjual|jumlah penjualan|total pesanan)\b/i,
-      creators: /\b(?:kreator|creators?|creator affiliate|jumlah kreator|affiliate creators?)\b/i,
-      cart: /\b(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
+      ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
+      creators: /\b(?:jumlah\s*kreator|kreator|creators?|creator affiliate|affiliate creators?)\b/i,
+      cart: /\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|pembeli\s+memasukkan\s+ke\s+keranjang|add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
     };
     const metricKeys = Object.keys(labelRules);
-    const parseNumber = (raw) => {
-      const match = String(raw || '').match(/(\d[\d.,]*)(?:\s*([KMB]))?\s*(%?)/i);
+    const parseNumber = raw => {
+      const match = String(raw || '').match(/(\d[\d.,]*)(?:\s*([KMB]))?\s*(%|％)?/i);
       if (!match) return null;
       let token = match[1].replace(/\s/g, '');
       if (/^\d{1,3}(?:\.\d{3})+$/.test(token)) token = token.replace(/\./g, '');
@@ -490,39 +490,43 @@
       if (suffix === 'b') value *= 1e9;
       return Number.isFinite(value) && value >= 0 ? value : null;
     };
-    const isOtherMetricLabel = (line, key) => metricKeys.some(other => other !== key && labelRules[other].test(line));
+    const isNumericOnly = line => /^\s*\d[\d.,]*\s*[KMB]?\s*%?\s*$/i.test(String(line || ''));
     const findMetric = key => {
       const rule = labelRules[key];
       const readValue = raw => {
         const source = String(raw || '');
-        // CTR must come from an explicitly percentage-marked value. This prevents nearby
-        // counts (for example orders or creators) from being mistaken for CTR.
         if (key === 'ctr') {
           const match = source.match(/(\d[\d.,]*)\s*(?:%|％)/);
           return match ? parseNumber(match[1]) : null;
         }
         return parseNumber(source);
       };
+      // Prefer a value on the same line as its own label; stop before another metric label.
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const label = rule.exec(line);
         if (!label) continue;
         let tail = line.slice(label.index + label[0].length);
-        const nextLabels = metricKeys.map(k => k === key ? null : labelRules[k].exec(tail))
-          .filter(Boolean).sort((a,b) => a.index-b.index);
-        if (nextLabels.length) tail = tail.slice(0, nextLabels[0].index);
-        const inlineValue = readValue(tail);
-        if (inlineValue !== null) return inlineValue;
-        const beforeLabel = readValue(line.slice(0, label.index));
-        if (beforeLabel !== null) return beforeLabel;
-        for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
+        const otherLabels = metricKeys.filter(k => k !== key)
+          .map(k => labelRules[k].exec(tail)).filter(Boolean).sort((a,b) => a.index-b.index);
+        if (otherLabels.length) tail = tail.slice(0, otherLabels[0].index);
+        const inline = readValue(tail);
+        if (inline !== null) return inline;
+        const before = readValue(line.slice(0, label.index));
+        if (before !== null) return before;
+        // A value below a label is valid only before the next metric label.
+        // This avoids borrowing the neighboring card's value in a 2x2 layout.
+        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
           const next = lines[j];
-          if (metricKeys.some(k => k !== key && labelRules[k].test(next))) break;
-          // Counts are only accepted from a number-only line after a metric label.
-          // OCR lines with other words can contain values from adjacent cards and are unsafe.
-          const value = readValue(next);
-          if (value !== null && (key === 'ctr' || /^\s*[\d.,]+\s*[KMB]?\s*%?\s*$/i.test(next))) return value;
-          if (next.length > 45 || /[A-Za-zÀ-ÿ]{3,}/.test(next)) break;
+          if (metricKeys.some(k => labelRules[k].test(next))) break;
+          if (key === 'ctr') {
+            const pct = readValue(next);
+            if (pct !== null) return pct;
+          } else if (isNumericOnly(next)) {
+            const value = readValue(next);
+            if (value !== null) return value;
+          }
+          if (next.length > 55 || /[A-Za-zÀ-ÿ]{3,}/.test(next)) break;
         }
       }
       return null;
@@ -541,22 +545,28 @@
         !/^(?:Rp\s*)?[\d.,]+(?:\s*(?:rb|ribu|jt|juta))?$/i.test(clean);
     };
 
-    // The product name is the text attached to the seller badge itself, e.g.
-    // "Mall Nama Produk", "PowerShop Nama Produk", or "Beli Lokal Nama Produk".
-    // Do not scan above/below the badge for an unrelated line.
+    // Judul produk berada pada bagian setelah "Ringkasan" dan menempel pada label toko.
+    // Jangan mengambil label toko/judul yang muncul di bagian lain screenshot.
     let name = '';
-    for (let i = 0; i < lines.length; i++) {
-      if (!shopBadge.test(lines[i])) continue;
-      const match = lines[i].match(shopBadge);
-      const remainder = match ? (lines[i].slice(match.index + match[0].length).replace(/^[\s:|·•\-–—]+/, '').trim()) : '';
-      if (plausibleTitle(remainder)) { name = remainder; break; }
-      // OCR may split the badge and title into two adjacent lines. Only accept the
-      // immediately following line, and never anything after "Ringkasan".
-      const next = lines[i + 1] || '';
-      if (/\bringkasan\b/i.test(next) || shopBadge.test(next) || metricLine(next)) continue;
-      if (plausibleTitle(next)) { name = next; break; }
+    const summaryIndex = lines.findIndex(line => /\bringkasan\b/i.test(line));
+    if (summaryIndex >= 0) {
+      for (let i = summaryIndex; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(shopBadge);
+        if (!match) continue;
+        const remainder = line.slice(match.index + match[0].length)
+          .replace(/^[\s:|·•\-–—]+/, '').trim();
+        if (plausibleTitle(remainder)) { name = remainder; break; }
+        // Some OCR engines split the shop badge and product title into adjacent lines.
+        for (let j = i + 1; j <= Math.min(i + 2, lines.length - 1); j++) {
+          const next = lines[j];
+          if (shopBadge.test(next) || metricLine(next) || /\bringkasan\b/i.test(next)) break;
+          if (plausibleTitle(next)) { name = next; break; }
+          if (next.length > 180) break;
+        }
+        if (name) break;
+      }
     }
-    // Never guess the product name from an arbitrary line: this was filling headings or labels as the title.
     name = name.replace(/^[•·|\-–—]+\s*/, '').trim();
     if (name && name === name.toLocaleUpperCase('id-ID') && /[A-ZÀ-Þ]/.test(name)) {
       name = name.toLocaleLowerCase('id-ID').replace(/(^|[\s/\-(])([a-zà-ÿ])/g, (m, lead, letter) => lead + letter.toLocaleUpperCase('id-ID'));
