@@ -470,10 +470,11 @@
       .map(s => s.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim())
       .filter(Boolean);
     const labelRules = {
-      orders: /\b(?:pesanan|orders?|sold|terjual|jumlah penjualan|total pesanan)\b/i,
+      // Match metric labels, not any mention of these words elsewhere in the screenshot.
+      orders: /\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
       ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
-      creators: /\b(?:jumlah\s*kreator|kreator|creators?|creator affiliate|affiliate creators?)\b/i,
-      cart: /\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|pembeli\s+memasukkan\s+ke\s+keranjang|add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
+      creators: /\b(?:jumlah\s+kreator|jumlah\s+creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
+      cart: /\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|pembeli\s+memasukkan\s+ke\s+keranjang|add.?to.?cart|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
     };
     const metricKeys = Object.keys(labelRules);
     const parseNumber = raw => {
