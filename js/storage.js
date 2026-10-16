@@ -106,6 +106,7 @@ async function restoreFromInternalStorage(event) {
     if (!file) return;
     const input = event.target;
     try {
+        if (!currentUser || !supabaseClient) throw new Error('Login terlebih dahulu agar pemulihan dapat disimpan ke akun cloud.');
         const content = JSON.parse(await file.text());
         if (!content || !Array.isArray(content.tasks) || !content.progress || typeof content.progress !== 'object' || Array.isArray(content.progress)) {
             throw new Error('Format backup tidak cocok. Gunakan file JSON dari fitur Backup Daily Task.');
