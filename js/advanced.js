@@ -470,10 +470,10 @@
       .map(s => s.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim())
       .filter(Boolean);
     const labelRules = {
-      ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?)\b/i,
-      orders: /\b(?:pesanan|orders?|sold|terjual|jumlah penjualan)\b/i,
-      creators: /\b(?:kreator|creators?|creator affiliate|jumlah kreator)\b/i,
-      cart: /\b(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?)\b/i
+      ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
+      orders: /\b(?:pesanan|orders?|sold|terjual|jumlah penjualan|total pesanan)\b/i,
+      creators: /\b(?:kreator|creators?|creator affiliate|jumlah kreator|affiliate creators?)\b/i,
+      cart: /\b(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
     };
     const metricKeys = Object.keys(labelRules);
     const parseNumber = (raw) => {
@@ -505,16 +505,17 @@
         // Allow punctuation such as "(%)" between the CTR label and its value.
         const inlineValue = parseNumber(tail);
         if (inlineValue !== null) return inlineValue;
+        // Some OCR engines reorder a card's value before its label (e.g. "1,2K Pesanan").
+        const beforeLabel = parseNumber(line.slice(0, label.index));
+        if (beforeLabel !== null) return beforeLabel;
         // Some dashboards put the number on the next line. Read only nearby number-only
         // lines and stop before another metric label or unrelated text.
-        for (let j = i + 1; j <= Math.min(i + 2, lines.length - 1); j++) {
+        for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
           const next = lines[j];
-          if (metricKeys.some(k => labelRules[k].test(next))) break;
-          if (/^\s*\d[\d.,]*\s*[KMB]?\s*%?\s*$/i.test(next)) {
-            const value = parseNumber(next);
-            if (value !== null) return value;
-          }
-          if (next.length > 35 || /[A-Za-zÀ-ÿ]{3,}/.test(next)) break;
+          if (metricKeys.some(k => k !== key && labelRules[k].test(next))) break;
+          const value = parseNumber(next);
+          if (value !== null && (/^\s*[\d.,]+\s*[KMB]?\s*%?\s*$/i.test(next) || next.length <= 24)) return value;
+          if (next.length > 45 || /[A-Za-zÀ-ÿ]{3,}/.test(next)) break;
         }
       }
       return null;
@@ -547,7 +548,7 @@
       }
       if (name) break;
     }
-    if (!name) name = lines.find(plausibleTitle) || '';
+    // Never guess the product name from an arbitrary line: this was filling headings or labels as the title.
     name = name.replace(/^[•·|\-–—]+\s*/, '').trim();
     if (name && name === name.toLocaleUpperCase('id-ID') && /[A-ZÀ-Þ]/.test(name)) {
       name = name.toLocaleLowerCase('id-ID').replace(/(^|[\s/\-(])([a-zà-ÿ])/g, (m, lead, letter) => lead + letter.toLocaleUpperCase('id-ID'));
@@ -609,12 +610,20 @@
       const message = (found.length ? 'Terbaca: ' + found.join(', ') + '. Periksa hasilnya lalu tekan Simpan.' : 'Gambar berhasil dibaca, tetapi nama/metrik belum dikenali. Isi atau koreksi formulir secara manual sebelum menyimpan.') + (productUrl ? '' : ' Link produk belum diisi; tempel link di formulir sebelum menyimpan.');
       if (status) status.textContent = message;
       say(message, found.length ? 'text-emerald-300' : 'text-amber-300');
-      if (!found.length) {
-        const sample = rawOcrText.trim().replace(/\s+/g, ' ').slice(0, 220);
-        const diagnostic = sample ? ' Teks yang terbaca OCR: "' + sample + '".' : ' OCR tidak menghasilkan teks. Periksa apakah gambar jelas dan pustaka OCR selesai dimuat.';
-        $('product-editor-error').textContent = 'OCR belum menemukan nama atau metrik yang dikenali.' + diagnostic;
+      const metricCount = [parsed.orders, parsed.ctr, parsed.creators, parsed.cart].filter(v => v !== null).length;
+      if (metricCount < 4 || !parsed.name) {
+        const sample = rawOcrText.trim().replace(/\s+/g, ' ').slice(0, 500);
+        const missing = [
+          parsed.name ? '' : 'nama',
+          parsed.orders === null ? 'pesanan' : '',
+          parsed.ctr === null ? 'CTR' : '',
+          parsed.creators === null ? 'kreator' : '',
+          parsed.cart === null ? 'add-to-cart' : ''
+        ].filter(Boolean).join(', ');
+        const diagnostic = sample ? ' Teks OCR mentah: "' + sample + '".' : ' OCR tidak menghasilkan teks.';
+        $('product-editor-error').textContent = 'Data belum lengkap (' + missing + '). Koreksi manual sebelum menyimpan.' + diagnostic;
         $('product-editor-error').classList.remove('hidden');
-        if (status) status.textContent = 'OCR selesai, tetapi data belum dikenali. Detail diagnostik ditampilkan di formulir.';
+        if (status) status.textContent = 'OCR selesai. Data yang belum dikenali dan teks pembacaan ditampilkan di formulir.';
       }
     } catch (e) {
       console.error('OCR screenshot gagal:', e);
