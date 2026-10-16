@@ -477,6 +477,7 @@
       cart: /\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
     const metricKeys = Object.keys(labelRules);
+    const unrelatedMetric = /\\b(?:views?|tayangan|ditonton|penayangan|video|likes?|suka|komentar|comments?|shares?|dibagikan|impressions?|jangkauan)\\b/i;
     const parseNumber = raw => {
       const match = String(raw || '').match(/(\d[\d.,]*)(?:\s*([KMB]))?\s*(%|％)?/i);
       if (!match) return null;
@@ -519,6 +520,7 @@
         // This avoids borrowing the neighboring card's value in a 2x2 layout.
         for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
           const next = lines[j];
+          if (unrelatedMetric.test(next)) break;
           if (metricKeys.some(k => labelRules[k].test(next))) break;
           if (key === 'ctr') {
             const pct = readValue(next);
@@ -654,6 +656,7 @@
         if(rules[label.key].test(row.text))continue;
         const candidates=row.words.map(w=>({w,n:parseNum(w.text,label.key)}))
           .filter(x=>x.n!==null&&(label.key!=='ctr'||/%|％/.test(x.w.text)));
+        if(unrelatedMetric.test(row.text))break;
         if(!candidates.length)continue;
         candidates.sort((a,b)=>{
           const dx=Math.abs(a.w.cx-anchorX)-Math.abs(b.w.cx-anchorX);
