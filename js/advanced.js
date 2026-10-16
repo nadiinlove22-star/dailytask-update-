@@ -438,6 +438,96 @@
     }
     if (button) {button.disabled=false;button.textContent='Tambah';}
   }
+  // OCR screenshot runs in the browser. It reads visible text; extracted values must be reviewed before saving.
+  let analysisOcrWorkerPromise = null;
+  function loadAnalysisOcr() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    if (analysisOcrWorkerPromise) return analysisOcrWorkerPromise;
+    analysisOcrWorkerPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      script.async = true;
+      script.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error('Pustaka OCR tidak tersedia.'));
+      script.onerror = () => reject(new Error('Gagal memuat OCR. Periksa koneksi internet lalu coba lagi.'));
+      document.head.appendChild(script);
+    });
+    return analysisOcrWorkerPromise;
+  }
+  function parseAnalysisScreenshotText(text) {
+    const lines = String(text || '').split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
+    const all = lines.join(' \\n ').replace(/\\s+/g, ' ');
+    const findNumber = (patterns, percent=false) => {
+      for (const pattern of patterns) {
+        const match = all.match(pattern);
+        if (match && match[1]) {
+          const raw = match[1].replace(/\\s/g,'').replace(/,(?=\\d{1,2}\\b)/g,'.').replace(/\\.(?=\\d{3}\\b)/g,'').replace(/,/g,'');
+          const value = Number(raw);
+          if (Number.isFinite(value) && value >= 0) return value;
+        }
+      }
+      return null;
+    };
+    const ctr = findNumber([/(?:CTR|click.?through.?rate|rasio klik)[^\\d%]{0,24}(\\d+(?:[.,]\\d+)?)\\s*%?/i]);
+    const orders = findNumber([/(?:pesanan|orders?|sold|terjual|jumlah penjualan)[^\\d]{0,30}(\\d[\\d.,]*)/i]);
+    const creators = findNumber([/(?:kreator|creators?|creator affiliate|jumlah kreator)[^\\d]{0,30}(\\d[\\d.,]*)/i]);
+    const cart = findNumber([/(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?)[^\\d]{0,30}(\\d[\\d.,]*)/i]);
+    const ignored = /^(analisa|analisis|tren|trend|statistik|produk|product|tiktok shop|data|7 hari|7 days|overview|ringkasan)$/i;
+    const name = lines.find(line => line.length >= 4 && line.length <= 120 && !ignored.test(line) && !/(CTR|pesanan|orders?|kreator|creator|keranjang|cart|terjual|revenue|pendapatan|klik|views|tayangan)/i.test(line) && !/^https?:/i.test(line)) || '';
+    return { name, orders, ctr, creators, cart };
+  }
+  async function readAnalysisScreenshot() {
+    const fileInput = $('analysis-screenshot');
+    const file = fileInput && fileInput.files && fileInput.files[0];
+    const urlInput = $('analysis-paste-url');
+    const feedback = $('analysis-paste-feedback');
+    const preview = $('analysis-screenshot-preview');
+    const img = $('analysis-screenshot-image');
+    const status = $('analysis-screenshot-status');
+    const button = $('analysis-read-screenshot');
+    const say = (message, kind='text-slate-400') => { if(feedback){feedback.textContent=message;feedback.className='mt-2 text-[10px] '+kind;} };
+    if (!file || !/^image\\//i.test(file.type)) { say('Pilih screenshot berupa gambar terlebih dahulu.', 'text-rose-400'); return; }
+    if (file.size > 12 * 1024 * 1024) { say('Ukuran gambar terlalu besar. Gunakan screenshot di bawah 12 MB.', 'text-rose-400'); return; }
+    const productUrl = safeProductUrl(urlInput && urlInput.value);
+    if (!productUrl) { say('Tempel link produk terlebih dahulu agar screenshot tersimpan pada produk yang benar.', 'text-rose-400'); if(urlInput) urlInput.focus(); return; }
+    if (preview) preview.classList.remove('hidden');
+    if (img) img.src = URL.createObjectURL(file);
+    if (status) status.textContent = 'Memuat OCR…';
+    if (button) { button.disabled = true; button.textContent = 'Membaca gambar…'; }
+    say('Sedang membaca teks screenshot di perangkat ini. Proses pertama bisa memerlukan waktu.');
+    try {
+      const Tesseract = await loadAnalysisOcr();
+      const result = await Tesseract.recognize(file, 'ind+eng', {
+        logger: m => { if(status && m.status) status.textContent = m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
+      });
+      const parsed = parseAnalysisScreenshotText(result && result.data && result.data.text);
+      const existing = getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl);
+      if (existing) openProductEditor(existing.id);
+      else {
+        openProductEditor();
+        $('product-editor-id').value = '';
+        $('product-editor-url').value = productUrl;
+        $('product-editor-name').value = parsed.name || productNameFromUrl(productUrl) || '';
+      }
+      if (parsed.name && !$('product-editor-name').value.trim()) $('product-editor-name').value = parsed.name;
+      if (parsed.orders !== null) $('product-editor-orders').value = parsed.orders;
+      if (parsed.ctr !== null) $('product-editor-ctr').value = parsed.ctr;
+      if (parsed.creators !== null) $('product-editor-creators').value = parsed.creators;
+      if (parsed.cart !== null) $('product-editor-cart').value = parsed.cart;
+      const found = [parsed.name ? 'nama' : '', parsed.orders !== null ? 'pesanan' : '', parsed.ctr !== null ? 'CTR' : '', parsed.creators !== null ? 'kreator' : '', parsed.cart !== null ? 'add to cart' : ''].filter(Boolean);
+      const message = found.length ? 'Terbaca: ' + found.join(', ') + '. Periksa hasilnya lalu tekan Simpan.' : 'Gambar berhasil dibaca, tetapi nama/metrik belum dikenali. Isi atau koreksi formulir secara manual sebelum menyimpan.';
+      if (status) status.textContent = message;
+      say(message, found.length ? 'text-emerald-300' : 'text-amber-300');
+      if (!found.length) $('product-editor-error').textContent = 'OCR belum menemukan metrik yang dikenali. Periksa dan isi data dari screenshot secara manual.';
+    } catch (e) {
+      console.error('OCR screenshot gagal:', e);
+      const message = String(e && e.message || 'OCR gagal membaca gambar.');
+      if (status) status.textContent = message;
+      say(message + ' Kamu masih bisa mengisi data secara manual.', 'text-rose-400');
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Baca Screenshot & Isi Data'; }
+    }
+  }
+  window.readAnalysisScreenshot = readAnalysisScreenshot;
   window.addProductFromPastedLink = addProductFromPastedLink;
   window.openProductEditor = openProductEditor;
   window.closeProductEditor = closeProductEditor;
