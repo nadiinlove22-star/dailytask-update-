@@ -439,6 +439,204 @@
   window.saveProductEditor = saveProductEditor;
   window.renderAnalysisTab = renderAnalysisTab;
 
+  // Notes are stored alongside progress data so they sync through the existing cloud save and backup.
+  function getNotes() {
+    if (typeof progressData === 'undefined' || !progressData) return [];
+    if (!Array.isArray(progressData.__notes)) progressData.__notes = [];
+    return progressData.__notes;
+  }
+  async function saveNotes() {
+    if (typeof progressData !== 'undefined' && progressData) {
+      progressData.__notes = getNotes();
+      if (typeof saveData === 'function') await saveData();
+    }
+    renderNotes();
+  }
+  function renderNotes() {
+    const host = $('notes-list');
+    if (!host) return;
+    host.innerHTML = '';
+    const notes = getNotes();
+    if (!notes.length) {
+      const empty = document.createElement('div');
+      empty.className = 'rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-6 text-center';
+      empty.innerHTML = '<div class="text-2xl mb-2">📝</div><p class="text-sm font-semibold text-slate-200">Belum ada catatan</p><p class="mt-1 text-xs text-slate-500">Simpan teks dan kumpulan link favoritmu di sini.</p>';
+      host.appendChild(empty);
+      return;
+    }
+    notes.forEach((note, index) => {
+      const card = document.createElement('section');
+      card.className = 'rounded-2xl border border-slate-800 bg-slate-900/80 p-3 flex items-center gap-3 shadow-sm';
+      const icon = document.createElement('div');
+      icon.className = 'shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-300';
+      icon.textContent = '🗒️';
+      const main = document.createElement('div');
+      main.className = 'flex-1 min-w-0';
+      const name = document.createElement('p');
+      name.className = 'text-sm font-semibold text-slate-100 break-words';
+      name.textContent = note.name || 'Catatan tanpa nama';
+      const meta = document.createElement('p');
+      meta.className = 'mt-1 text-[11px] text-slate-500';
+      const chars = (note.content || '').length;
+      const links = Math.max(0, ((note.content || '').split('http://').length - 1) + ((note.content || '').split('https://').length - 1));
+      meta.textContent = (chars ? chars.toLocaleString('id-ID') + ' karakter' : 'Belum ada isi') + (links ? ' · ' + links + '+ tautan' : '');
+      main.append(name, meta);
+      const actions = document.createElement('div');
+      actions.className = 'flex shrink-0 items-center gap-1.5';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'rounded-xl bg-emerald-500/15 border border-emerald-500/25 px-3 py-2 text-xs font-semibold text-emerald-300 active:scale-95';
+      copy.textContent = 'Salin';
+      copy.title = 'Salin seluruh isi catatan';
+      copy.addEventListener('click', () => copyNote(note.id));
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'rounded-xl bg-slate-800 px-2.5 py-2 text-xs text-slate-200 active:scale-95';
+      edit.textContent = '✏️';
+      edit.title = 'Edit catatan';
+      edit.addEventListener('click', () => editNote(note.id));
+      const more = document.createElement('details');
+      more.className = 'relative';
+      const summary = document.createElement('summary');
+      summary.className = 'list-none cursor-pointer rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 active:scale-95';
+      summary.textContent = '⋮';
+      const menu = document.createElement('div');
+      menu.className = 'absolute right-0 top-10 z-20 flex min-w-32 flex-col gap-1 rounded-xl border border-slate-700 bg-slate-950 p-1.5 shadow-xl';
+      const makeMenuButton = (label, title, action, disabled) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'rounded-lg px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-30';
+        b.textContent = label;
+        b.title = title;
+        b.disabled = !!disabled;
+        b.addEventListener('click', () => { more.open = false; action(); });
+        return b;
+      };
+      menu.append(
+        makeMenuButton('↑ Pindah ke atas', 'Pindah ke atas', () => moveNote(note.id, -1), index === 0),
+        makeMenuButton('↓ Pindah ke bawah', 'Pindah ke bawah', () => moveNote(note.id, 1), index === notes.length - 1),
+        makeMenuButton('🗑 Hapus', 'Hapus catatan', () => deleteNote(note.id), false)
+      );
+      more.append(summary, menu);
+      actions.append(copy, edit, more);
+      card.append(icon, main, actions);
+      host.appendChild(card);
+    });
+  }
+  let editingNoteId = null;
+  function openNoteEditor(note) {
+    const modal = $('note-editor-modal');
+    const nameInput = $('note-editor-name');
+    const contentInput = $('note-editor-content');
+    const title = $('note-editor-title');
+    const error = $('note-editor-error');
+    if (!modal || !nameInput || !contentInput) return;
+    editingNoteId = note ? note.id : null;
+    if (title) title.textContent = note ? 'Edit Catatan' : 'Tambah Catatan';
+    nameInput.value = note ? (note.name || '') : '';
+    contentInput.value = note ? (note.content || '') : '';
+    if (error) { error.textContent = ''; error.classList.add('hidden'); }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => nameInput.focus(), 50);
+  }
+  function closeNoteEditor() {
+    const modal = $('note-editor-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    editingNoteId = null;
+  }
+  async function saveNoteEditor() {
+    const nameInput = $('note-editor-name');
+    const contentInput = $('note-editor-content');
+    const error = $('note-editor-error');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const content = contentInput ? contentInput.value : '';
+    if (!name) {
+      if (error) { error.textContent = 'Nama catatan wajib diisi.'; error.classList.remove('hidden'); }
+      return;
+    }
+    const notes = getNotes();
+    if (editingNoteId !== null) {
+      const note = notes.find(n => String(n.id) === String(editingNoteId));
+      if (note) { note.name = name; note.content = content; }
+    } else {
+      notes.push({ id: Date.now(), name, content });
+    }
+    closeNoteEditor();
+    await saveNotes();
+    showNotesFeedback('Catatan berhasil disimpan.');
+  }
+  function showNotesFeedback(message) {
+    const el = $('notes-feedback');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove('hidden');
+  }
+  function addNote() { openNoteEditor(null); }
+  function editNote(id) {
+    const note = getNotes().find(n => String(n.id) === String(id));
+    if (note) openNoteEditor(note);
+  }
+  window.addNote = addNote;
+  window.renderNotes = renderNotes;
+  window.closeNoteEditor = closeNoteEditor;
+  window.saveNoteEditor = saveNoteEditor;
+
+  async function copyNote(id) {
+    const index = getNotes().findIndex(n => String(n.id) === String(id));
+    if (index < 0) return;
+    const note = getNotes()[index];
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(note.content || '');
+      } else {
+        const area = document.createElement('textarea');
+        area.value = note.content || '';
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        area.setAttribute('readonly', '');
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        if (!ok) throw new Error('copy failed');
+      }
+
+      // Reorder only after the clipboard operation succeeds.
+      const currentIndex = getNotes().findIndex(n => String(n.id) === String(id));
+      if (currentIndex >= 0 && currentIndex < getNotes().length - 1) {
+        const [copiedNote] = getNotes().splice(currentIndex, 1);
+        getNotes().push(copiedNote);
+        await saveNotes();
+        showNotesFeedback('"' + note.name + '" berhasil disalin dan dipindahkan ke paling bawah.');
+      } else {
+        showNotesFeedback('Isi catatan "' + note.name + '" berhasil disalin.');
+      }
+    } catch (_) {
+      showNotesFeedback('Gagal menyalin. Catatan tidak dipindahkan. Periksa izin clipboard atau coba buka lewat browser.');
+    }
+  }
+  function moveNote(id, direction) {
+    const notes = getNotes();
+    const i = notes.findIndex(n => String(n.id) === String(id));
+    const j = i + direction;
+    if (i < 0 || j < 0 || j >= notes.length) return;
+    [notes[i], notes[j]] = [notes[j], notes[i]];
+    saveNotes();
+  }
+  function deleteNote(id) {
+    const note = getNotes().find(n => String(n.id) === String(id));
+    if (!note) return;
+    const ok = window.confirm ? window.confirm('Hapus catatan "' + note.name + '"?') : false;
+    if (!ok) { showNotesFeedback('Penghapusan dibatalkan.'); return; }
+    progressData.__notes = getNotes().filter(n => String(n.id) !== String(id));
+    saveNotes();
+  }
+  window.addNote = addNote;
+  window.renderNotes = renderNotes;
+
   function init() {
     if (initialized) return;
     initialized = true;
