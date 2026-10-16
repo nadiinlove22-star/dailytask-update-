@@ -362,8 +362,11 @@
       const info=document.createElement('div'); info.className='min-w-0 flex-1';
       const titleRow=document.createElement('div'); titleRow.className='flex min-w-0 items-start gap-1.5';
       const name=document.createElement('button'); name.type='button'; name.className='min-w-0 flex-1 whitespace-normal break-words text-left text-[11px] leading-snug font-bold text-slate-100'; name.textContent=p.name||'Produk tanpa nama'; name.title='Klik judul untuk membuka tautan produk'; name.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');});
-      const edit=document.createElement('button'); edit.type='button'; edit.className='shrink-0 rounded-md border border-slate-700 px-2 py-1 text-[9px] leading-tight text-slate-300'; edit.textContent='Edit'; edit.title='Edit produk'; edit.addEventListener('click',()=>openProductEditor(p.id));
-      titleRow.append(name,edit);
+      const actions=document.createElement('div'); actions.className='flex shrink-0 items-center gap-1';
+      const edit=document.createElement('button'); edit.type='button'; edit.className='flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-300'; edit.textContent='✏️'; edit.title='Edit produk'; edit.setAttribute('aria-label','Edit produk'); edit.addEventListener('click',()=>openProductEditor(p.id));
+      const del=document.createElement('button'); del.type='button'; del.className='flex h-7 w-7 items-center justify-center rounded-md border border-rose-500/20 text-rose-400'; del.textContent='🗑️'; del.title='Hapus produk'; del.setAttribute('aria-label','Hapus produk'); del.addEventListener('click',()=>deleteAnalysisProduct(p.id));
+      actions.append(edit,del);
+      titleRow.append(name,actions);
       const date=document.createElement('div'); date.className='mt-0.5 whitespace-normal break-words text-[9px] leading-snug text-slate-500'; date.textContent=entry.hasData?productDateLabel(p.updatedAt):'Metrik belum tersedia · '+(p.url?new URL(p.url).hostname:'link belum tersedia');
       info.append(titleRow,date); top.append(rank,info);
       const right=document.createElement('div'); right.className='flex max-w-[44%] shrink-0 flex-col items-end gap-1 text-right';
@@ -381,9 +384,7 @@
       });
       metrics.appendChild(metricRow);
       card.append(metrics);
-      const foot=document.createElement('div'); foot.className='mt-1 flex justify-end';
-      const del=document.createElement('button'); del.type='button'; del.className='rounded-md px-2 py-1 text-[9px] text-rose-400'; del.textContent='Hapus'; del.title='Hapus produk'; del.addEventListener('click',()=>deleteAnalysisProduct(p.id));
-      foot.append(del); card.append(foot); cards.appendChild(card);
+      cards.appendChild(card);
     });
     host.appendChild(cards);
   }
