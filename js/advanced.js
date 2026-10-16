@@ -634,20 +634,36 @@
         found.push({key,ri,x});
       }
     });
-    // For each label, select a number below it by horizontal distance, not by OCR reading order.
+    // Associate values spatially. OCR commonly breaks a long label such as
+    // "Pembeli yang memasukkan ke keranjang" into several adjacent rows.
+    // A repeated fragment of the SAME label is not a boundary; only a different
+    // metric label can stop a search. This prevents the cart value being lost
+    // when its label is split, and prevents values leaking between cards.
     for(const label of found){
       if(out[label.key]!==null)continue;
-      for(let ri=label.ri+1;ri<Math.min(rows.length,label.ri+6);ri++){
+      const sameKeyRows=found.filter(x=>x.key===label.key && Math.abs(x.ri-label.ri)<=2);
+      const anchorX=sameKeyRows.length
+        ? sameKeyRows.reduce((sum,x)=>sum+x.x,0)/sameKeyRows.length
+        : label.x;
+      const lastLabelRow=Math.max(label.ri,...sameKeyRows.map(x=>x.ri));
+      for(let ri=lastLabelRow+1;ri<Math.min(rows.length,lastLabelRow+8);ri++){
         const row=rows[ri];
-        if(Object.values(rules).some(re=>re.test(row.text)))break;
+        const otherMetric=found.some(x=>x.key!==label.key && x.ri===ri);
+        if(otherMetric)break;
+        // Ignore further fragments of the same label, but do not treat them as data.
+        if(rules[label.key].test(row.text))continue;
         const candidates=row.words.map(w=>({w,n:parseNum(w.text,label.key)}))
           .filter(x=>x.n!==null&&(label.key!=='ctr'||/%|％/.test(x.w.text)));
         if(!candidates.length)continue;
-        candidates.sort((a,b)=>Math.abs(a.w.cx-label.x)-Math.abs(b.w.cx-label.x));
+        candidates.sort((a,b)=>{
+          const dx=Math.abs(a.w.cx-anchorX)-Math.abs(b.w.cx-anchorX);
+          return Math.abs(dx)>1 ? dx : a.w.bbox.y0-b.w.bbox.y0;
+        });
         const pick=candidates[0];
-        // When two labels share the same row, don't let one card take the other card's number.
-        const peer=found.filter(x=>x.key!==label.key&&x.ri===label.ri).sort((a,b)=>Math.abs(a.x-label.x)-Math.abs(b.x-label.x))[0];
-        if(peer&&Math.abs(pick.w.cx-peer.x)<Math.abs(pick.w.cx-label.x))continue;
+        // Reject a number clearly closer to a neighboring metric card's label.
+        const peers=found.filter(x=>x.key!==label.key && Math.abs(x.ri-label.ri)<=2);
+        const peer=peers.sort((a,b)=>Math.abs(a.x-pick.w.cx)-Math.abs(b.x-pick.w.cx))[0];
+        if(peer && Math.abs(pick.w.cx-peer.x)+8 < Math.abs(pick.w.cx-anchorX)) break;
         out[label.key]=pick.n;break;
       }
     }
@@ -714,13 +730,12 @@
       const positioned = parseAnalysisScreenshotLayout(result && result.data);
       const textParsed = parseAnalysisScreenshotText(rawOcrText);
       // Coordinate parsing is primary; use text parsing only for fields the spatial parser could not confidently find.
-      const parsed = positioned ? {
-        name: positioned.name || textParsed.name,
-        orders: positioned.orders !== null ? positioned.orders : textParsed.orders,
-        ctr: positioned.ctr !== null ? positioned.ctr : textParsed.ctr,
-        creators: positioned.creators !== null ? positioned.creators : textParsed.creators,
-        cart: positioned.cart !== null ? positioned.cart : textParsed.cart
-      } : textParsed;
+      // When OCR supplies word coordinates, never silently fill a missing field
+      // from flattened text: that fallback can borrow a neighboring card's number
+      // or interpret unrelated text as a product name. Missing values stay blank
+      // and are surfaced for review. Text-only parsing is used only when coordinates
+      // are unavailable altogether.
+      const parsed = positioned || textParsed;
       closeAddProductModal();
       const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
       if (existing) openProductEditor(existing.id);
