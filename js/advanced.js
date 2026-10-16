@@ -480,7 +480,7 @@
       cart: /\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
     const metricKeys = Object.keys(labelRules);
-    const unrelatedMetric = /\b(?:views?|tayangan|ditonton|penayangan|video|likes?|suka|komentar|comments?|shares?|dibagikan|impressions?|jangkauan)\b/i;
+    const unrelatedMetric = /\b(?:views?|tayangan|ditonton|penayangan|video|likes?|suka|komentar|comments?|shares?|dibagikan|impressions?|jangkauan|kreator\s+challenge|tren\s+produk|7\s+hari\s+terakhir)\b/i;
     const parseNumber = raw => {
       const match = String(raw || '').match(/(\d[\d.,]*)(?:\s*([KMB]))?\s*(%|％)?/i);
       if (!match) return null;
@@ -599,9 +599,10 @@
     const rules={
       orders:/\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
       ctr:/\b(?:CTR|click.?through.?rate|rasio\s+klik(?:\s+tayang)?)\b/i,
-      creators:/\b(?:jumlah\s+kreator|jumlah\s+creator(?:s)?|affiliate\s+creator(?:s)?|creator\s+affiliate)\b/i,
-      // The app UI/OCR may split this long label across lines or recognize only one keyword.
-      cart:/\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
+      creators:/\b(?:(?:jumlah\s+)?kreator(?:\s+aktif)?|(?:jumlah\s+)?creators?|affiliate\s+creator(?:s)?|creator\s+affiliate)\b/i,
+      // TikTok Shop labels can wrap: "Pembeli yang menambahkan ke" / "keranjang".
+      // Match each distinctive fragment so the bottom-right card still gets an anchor.
+      cart:/\b(?:pembeli|menambahkan|memasukkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
     const parseNum=(text,key)=>{
       const src=String(text||'');
