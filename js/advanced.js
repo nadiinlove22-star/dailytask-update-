@@ -269,7 +269,18 @@
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? 'Update: ' + value : 'Update ' + d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
   }
+  function openAddProductModal() {
+    const modal = $('add-product-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeAddProductModal() {
+    const modal = $('add-product-modal');
+    if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+  }
   function openProductEditor(id) {
+    closeAddProductModal();
     const modal = $('product-editor-modal'); if (!modal) return;
     const product = getAnalysisProducts().find(p => String(p.id) === String(id)) || null;
     $('product-editor-title').textContent = product ? 'Edit produk' : 'Tambah produk';
@@ -429,6 +440,7 @@
       }
     }
     input.value='';
+    closeAddProductModal();
     renderAnalysisTab();
     if (productTitle) {
       say(metadata && cleanTitle(metadata.title) ? 'Nama produk berhasil dibaca dari metadata halaman. Statistik performa belum diambil otomatis.' : 'Nama diambil dari teks link, bukan diverifikasi dari halaman. Statistik performa belum diambil otomatis.', 'text-emerald-300');
@@ -543,6 +555,7 @@
         logger: m => { if(status && m.status) status.textContent = m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
       });
       const parsed = parseAnalysisScreenshotText(result && result.data && result.data.text);
+      closeAddProductModal();
       const existing = getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl);
       if (existing) openProductEditor(existing.id);
       else {
@@ -570,6 +583,8 @@
       if (button) { button.disabled = false; button.textContent = 'Baca Screenshot & Isi Data'; }
     }
   }
+  window.openAddProductModal = openAddProductModal;
+  window.closeAddProductModal = closeAddProductModal;
   window.readAnalysisScreenshot = readAnalysisScreenshot;
   window.addProductFromPastedLink = addProductFromPastedLink;
   window.openProductEditor = openProductEditor;
