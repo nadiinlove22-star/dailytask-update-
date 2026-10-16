@@ -672,8 +672,16 @@
     if(summary>=0){
       for(let i=summary;i<rows.length;i++){
         const row=rows[i],m=badge.exec(row.text);if(!m)continue;
+        const before=row.text.slice(0,m.index).replace(/^[\s:|·•\-–—]+|[\s:|·•\-–—]+$/g,'').trim();
         const after=row.text.slice(m.index+m[0].length).replace(/^[\s:|·•\-–—]+/,'').trim();
-        if(after.length>=4&&!Object.values(rules).some(re=>re.test(after))){out.name=after;break;}
+        const plausibleName=t=>t.length>=4&&t.length<=180&&
+          !/\bringkasan\b/i.test(t)&&!Object.values(rules).some(re=>re.test(t))&&
+          !/\b(?:statistik|analisis|tren|pesanan|produk terlaris)\b/i.test(t)&&
+          !/^\d[\d.,]*\s*(?:%|K|M|B)?$/i.test(t);
+        // In some seller dashboards the product title is BEFORE the Mall/PowerShop badge;
+        // in others OCR places it after the badge. Test both sides, never the badge itself.
+        if(plausibleName(before)){out.name=before;break;}
+        if(plausibleName(after)){out.name=after;break;}
         const badgeX=findPhraseCenter(row,m);
         const right=row.words.filter(w=>w.cx>badgeX+2).map(w=>w.text).join(' ').trim();
         if(right.length>=4&&!Object.values(rules).some(re=>re.test(right))){out.name=right;break;}
