@@ -474,7 +474,7 @@
       orders: /\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
       ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
       creators: /\b(?:jumlah\s+kreator|jumlah\s+creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
-      cart: /\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|pembeli\s+memasukkan\s+ke\s+keranjang|add.?to.?cart|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?|produk ditambahkan|ditambah ke keranjang)\b/i
+      cart: /\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
     const metricKeys = Object.keys(labelRules);
     const parseNumber = raw => {
@@ -595,7 +595,8 @@
       orders:/\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
       ctr:/\b(?:CTR|click.?through.?rate|rasio\s+klik(?:\s+tayang)?)\b/i,
       creators:/\b(?:jumlah\s+kreator|jumlah\s+creators?|kreator|creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
-      cart:/\b(?:pembeli(?:\s+yang)?\s+(?:memasukkan|menambahkan)\s+(?:produk\s+)?ke\s+keranjang|add.?to.?cart|tambah(?:kan)?\s+ke\s+keranjang|ditambahkan\s+ke\s+keranjang|cart\s+adds?|produk\s+ditambahkan|ditambah\s+ke\s+keranjang|keranjang)\b/i
+      // The app UI/OCR may split this long label across lines or recognize only one keyword.
+      cart:/\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
     const parseNum=(text,key)=>{
       const src=String(text||'');
@@ -624,7 +625,9 @@
       for(const key of Object.keys(rules)){
         const re=new RegExp(rules[key].source,rules[key].flags);const match=re.exec(row.text);
         if(!match)continue;
-        const x=findPhraseCenter(row,match);
+        // Add-to-cart label is long and often fragmented by OCR. Use the whole row
+        // as its anchor so the count below the bottom-right card stays in the same column.
+        const x=key==='cart' ? row.words.reduce((sum,w)=>sum+w.cx,0)/row.words.length : findPhraseCenter(row,match);
         const tail=row.text.slice(match.index+match[0].length);
         const inline=parseNum(tail,key);
         if(inline!==null&&(key!=='ctr'||/%|％/.test(tail)))out[key]=inline;
