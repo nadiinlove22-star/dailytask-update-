@@ -454,23 +454,23 @@
     return analysisOcrWorkerPromise;
   }
   function parseAnalysisScreenshotText(text) {
-    const lines = String(text || '').split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
-    const all = lines.join(' \\n ').replace(/\\s+/g, ' ');
+    const lines = String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const all = lines.join(' \n ').replace(/\s+/g, ' ');
     const findNumber = (patterns, percent=false) => {
       for (const pattern of patterns) {
         const match = all.match(pattern);
         if (match && match[1]) {
-          const raw = match[1].replace(/\\s/g,'').replace(/,(?=\\d{1,2}\\b)/g,'.').replace(/\\.(?=\\d{3}\\b)/g,'').replace(/,/g,'');
+          const raw = match[1].replace(/\s/g,'').replace(/,(?=\d{1,2}\b)/g,'.').replace(/\.(?=\d{3}\b)/g,'').replace(/,/g,'');
           const value = Number(raw);
           if (Number.isFinite(value) && value >= 0) return value;
         }
       }
       return null;
     };
-    const ctr = findNumber([/(?:CTR|click.?through.?rate|rasio klik)[^\\d%]{0,24}(\\d+(?:[.,]\\d+)?)\\s*%?/i]);
-    const orders = findNumber([/(?:pesanan|orders?|sold|terjual|jumlah penjualan)[^\\d]{0,30}(\\d[\\d.,]*)/i]);
-    const creators = findNumber([/(?:kreator|creators?|creator affiliate|jumlah kreator)[^\\d]{0,30}(\\d[\\d.,]*)/i]);
-    const cart = findNumber([/(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?)[^\\d]{0,30}(\\d[\\d.,]*)/i]);
+    const ctr = findNumber([/(?:CTR|click.?through.?rate|rasio klik)[^\d%]{0,24}(\d+(?:[.,]\d+)?)\s*%?/i]);
+    const orders = findNumber([/(?:pesanan|orders?|sold|terjual|jumlah penjualan)[^\d]{0,30}(\d[\d.,]*)/i]);
+    const creators = findNumber([/(?:kreator|creators?|creator affiliate|jumlah kreator)[^\d]{0,30}(\d[\d.,]*)/i]);
+    const cart = findNumber([/(?:add.?to.?cart|keranjang|tambah(?:kan)? ke keranjang|ditambahkan ke keranjang|cart adds?)[^\d]{0,30}(\d[\d.,]*)/i]);
     const ignored = /^(analisa|analisis|tren|trend|statistik|produk|product|tiktok shop|data|7 hari|7 days|overview|ringkasan)$/i;
     const name = lines.find(line => line.length >= 4 && line.length <= 120 && !ignored.test(line) && !/(CTR|pesanan|orders?|kreator|creator|keranjang|cart|terjual|revenue|pendapatan|klik|views|tayangan)/i.test(line) && !/^https?:/i.test(line)) || '';
     return { name, orders, ctr, creators, cart };
@@ -485,7 +485,7 @@
     const status = $('analysis-screenshot-status');
     const button = $('analysis-read-screenshot');
     const say = (message, kind='text-slate-400') => { if(feedback){feedback.textContent=message;feedback.className='mt-2 text-[10px] '+kind;} };
-    if (!file || !/^image\\//i.test(file.type)) { say('Pilih screenshot berupa gambar terlebih dahulu.', 'text-rose-400'); return; }
+    if (!file || !/^image\//i.test(file.type)) { say('Pilih screenshot berupa gambar terlebih dahulu.', 'text-rose-400'); return; }
     if (file.size > 12 * 1024 * 1024) { say('Ukuran gambar terlalu besar. Gunakan screenshot di bawah 12 MB.', 'text-rose-400'); return; }
     const productUrl = safeProductUrl(urlInput && urlInput.value);
     if (!productUrl) { say('Tempel link produk terlebih dahulu agar screenshot tersimpan pada produk yang benar.', 'text-rose-400'); if(urlInput) urlInput.focus(); return; }
