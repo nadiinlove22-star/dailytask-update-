@@ -16,7 +16,12 @@ async function initApp() {
                     updateUserInfo();
                     renderDaysBar();
                     changeDay(selectedDay);
-                    switchTab('tasks');
+                    let savedTab = 'tasks';
+                    try {
+                        const candidate = localStorage.getItem('dailyTaskActiveTab');
+                        if (['tasks', 'notes', 'analysis', 'stats', 'settings'].includes(candidate)) savedTab = candidate;
+                    } catch (err) {}
+                    switchTab(savedTab);
                 });
             } else {
                 updateUserInfo();
