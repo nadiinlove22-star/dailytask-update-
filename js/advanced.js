@@ -210,25 +210,55 @@
     return progressData.__analysisProducts;
   }
   const metricFields = [
-    { key: 'orders', label: 'Pesanan', weight: 0.40, higher: true },
-    { key: 'ctr', label: 'CTR', weight: 0.25, higher: true },
-    { key: 'creators', label: 'Kreator', weight: 0.15, higher: true },
-    { key: 'cart', label: 'Add to cart', weight: 0.20, higher: true }
+    { key: 'orders', label: 'Pesanan' },
+    { key: 'ctr', label: 'CTR' },
+    { key: 'creators', label: 'Kreator' },
+    { key: 'cart', label: 'Add to cart' }
   ];
   function safeProductUrl(value) {
     try { const u = new URL(String(value || '').trim()); return ['https:', 'http:'].includes(u.protocol) ? u.href : ''; } catch (_) { return ''; }
   }
-  function productScore(product, products) {
-    const valid = metricFields.filter(m => product.trend && product.trend[m.key] !== null && product.trend[m.key] !== undefined && product.trend[m.key] !== '');
-    if (!valid.length) return null;
-    let score = 0, weight = 0;
-    valid.forEach(m => {
-      const vals = products.map(p => p.trend && Number.isFinite(Number(p.trend[m.key])) && p.trend[m.key] !== '' ? Number(p.trend[m.key]) : null).filter(v => v !== null);
-      const max = Math.max(0, ...vals);
-      const normalized = max > 0 ? Math.max(0, Number(product.trend[m.key])) / max : 0;
-      score += normalized * m.weight; weight += m.weight;
-    });
-    return weight ? Math.round(score * 1000) / 10 : null;
+  function hasMetric(value) { return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0; }
+  function productScore(product) {
+    const t = product && product.trend || {};
+    const hasCtr = hasMetric(t.ctr), hasOrders = hasMetric(t.orders), hasCreators = hasMetric(t.creators), hasCart = hasMetric(t.cart);
+    if (!(hasCtr || hasOrders || hasCreators || hasCart)) return null;
+    let score = 0, totalWeight = 0;
+    if (hasCtr) {
+      const ctr = Number(t.ctr);
+      score += (ctr >= 3.5 ? 100 : ctr >= 2.0 ? 70 : 40) * 0.35;
+      totalWeight += 0.35;
+    }
+    if (hasCart && hasOrders) {
+      const ratio = Number(t.orders) > 0 ? Number(t.cart) / Number(t.orders) : (Number(t.cart) > 0 ? Infinity : 0);
+      score += (ratio >= 1.5 ? 100 : ratio >= 1.0 ? 70 : 40) * 0.30;
+      totalWeight += 0.30;
+    }
+    if (hasOrders) {
+      // Base volume score: capped logarithmic scale, plus 30 bonus points when the product records rising orders.
+      const volume = Math.min(100, Math.round(Math.log10(Number(t.orders) + 1) / 4 * 100));
+      const rising = Number(t.orderChange ?? t.ordersTrend ?? t.orderGrowth ?? 0) > 0 || t.trendDirection === 'up' || t.trendDirection === 'naik';
+      score += Math.min(100, volume + (rising ? 30 : 0)) * 0.20;
+      totalWeight += 0.20;
+    }
+    if (hasCreators) {
+      score += (Number(t.creators) < 500 ? 100 : 60) * 0.15;
+      totalWeight += 0.15;
+    }
+    // Only metrics actually supplied count toward the denominator; missing metrics are not silently treated as poor performance.
+    return totalWeight ? Math.round(score / totalWeight * 100) / 1 : null;
+  }
+  function productStatus(score) {
+    if (score === null) return { label: 'Data belum diinput', color: 'text-amber-300', note: 'Masukkan metrik untuk menilai produk' };
+    if (score >= 80) return { label: 'Sangat potensial', color: 'text-emerald-300', note: 'Dorong CTA checkout' };
+    if (score >= 65) return { label: 'Bagus', color: 'text-yellow-300', note: 'Uji angle dan CTA' };
+    return { label: 'Kurang potensial', color: 'text-rose-300', note: 'Evaluasi atau cari produk lain' };
+  }
+  function compactMetric(value, key) {
+    if (!hasMetric(value)) return '—';
+    const n = Number(value);
+    if (key === 'ctr') return n.toLocaleString('id-ID', { maximumFractionDigits: 2 }) + '%';
+    return n.toLocaleString('id-ID');
   }
   function productDateLabel(value) {
     if (!value) return 'Data belum diinput';
@@ -294,36 +324,43 @@
     const host = $('analysis-products-list'); if (!host) return;
     const all = getAnalysisProducts();
     host.innerHTML = '';
-    const ranked = all.map(p => ({ product:p, score:productScore(p, all), hasData:!!(p.updatedAt && p.trend && metricFields.some(m => p.trend[m.key] !== null && p.trend[m.key] !== undefined && p.trend[m.key] !== '')) }))
-      .sort((a,b) => (b.hasData - a.hasData) || ((b.score ?? -1) - (a.score ?? -1)) || String(a.product.name).localeCompare(String(b.product.name)));
-    const summary = $('analysis-summary');
-    if (summary) summary.textContent = all.length ? ranked.filter(x=>x.hasData).length + ' produk dengan data · ' + ranked.filter(x=>!x.hasData).length + ' belum ada data tren' : 'Belum ada produk. Tambahkan produk pertama untuk mulai mencatat tren.';
-    if (!ranked.length) { host.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-xs text-slate-400">Belum ada produk. Tekan + Produk untuk menambahkan.</div>'; return; }
-    ranked.forEach((entry, idx) => {
-      const p = entry.product, card = document.createElement('section');
-      card.className = 'rounded-2xl border border-slate-800 bg-slate-900/80 p-3';
-      const head = document.createElement('div'); head.className='flex items-start gap-2';
-      const main = document.createElement('div'); main.className='min-w-0 flex-1 cursor-pointer'; main.title='Buka link produk';
-      const title = document.createElement('div'); title.className='flex items-center gap-2';
-      const rank = document.createElement('span'); rank.className='text-[10px] text-emerald-300'; rank.textContent=entry.hasData ? '#'+(idx+1) : '—';
-      const name = document.createElement('span'); name.className='text-sm font-bold text-white break-words'; name.textContent=p.name || 'Produk tanpa nama';
-      title.append(rank,name); main.appendChild(title);
-      const meta = document.createElement('p'); meta.className='mt-1 text-[10px] '+(entry.hasData?'text-slate-500':'text-amber-300'); meta.textContent=entry.hasData ? productDateLabel(p.updatedAt)+' · Skor '+entry.score+'/100' : (p.updatedAt ? 'Data tren tidak tersedia · belum ada metrik yang diinput' : 'Data belum diinput'); main.appendChild(meta);
-      main.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');});
-      const actions=document.createElement('div');actions.className='flex shrink-0 gap-1';
-      const edit=document.createElement('button');edit.type='button';edit.className='rounded-lg border border-slate-700 px-2 py-1.5 text-[10px] text-slate-300';edit.textContent='Edit';edit.addEventListener('click',()=>openProductEditor(p.id));
-      const open=document.createElement('button');open.type='button';open.className='rounded-lg bg-emerald-600/20 px-2 py-1.5 text-[10px] text-emerald-300';open.textContent='Buka';open.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');});
-      actions.append(edit,open);head.append(main,actions);card.appendChild(head);
-      if (entry.hasData) {
-        const metrics=document.createElement('div');metrics.className='mt-3 grid grid-cols-2 gap-2';
-        metricFields.forEach(m=>{const box=document.createElement('div');box.className='rounded-lg bg-slate-800/70 p-2';const label=document.createElement('p');label.className='text-[10px] text-slate-500';label.textContent=m.label;const val=document.createElement('p');val.className='mt-0.5 text-xs font-semibold text-slate-200';const v=p.trend[m.key];val.textContent=v===null||v===undefined||v===''?'Data tidak tersedia':(m.key==='ctr'?Number(v)+'%':Number(v).toLocaleString('id-ID'));box.append(label,val);metrics.appendChild(box);});
-        card.appendChild(metrics);
-      } else {
-        const badge=document.createElement('p');badge.className='mt-2 rounded-lg bg-amber-500/10 p-2 text-[10px] text-amber-300';badge.textContent='Belum ada data tren. Tekan Edit untuk memasukkan data 7 hari terakhir.';card.appendChild(badge);
-      }
-      const del=document.createElement('button');del.type='button';del.className='mt-2 text-[10px] text-rose-400';del.textContent='Hapus produk';del.addEventListener('click',()=>deleteAnalysisProduct(p.id));card.appendChild(del);
-      host.appendChild(card);
+    const ranked = all.map(p => {
+      const score = productScore(p);
+      const trend = p.trend || {};
+      const hasAny = metricFields.some(m => hasMetric(trend[m.key]));
+      return { product:p, score, hasData:!!(p.updatedAt && hasAny), hasAny };
+    }).sort((a,b) => {
+      if (a.hasData !== b.hasData) return a.hasData ? -1 : 1;
+      if (a.score === null && b.score !== null) return 1;
+      if (b.score === null && a.score !== null) return -1;
+      return (b.score ?? -1) - (a.score ?? -1) || String(a.product.name).localeCompare(String(b.product.name));
     });
+    const summary = $('analysis-summary');
+    if (summary) summary.textContent = all.length ? ranked.filter(x=>x.hasData).length + ' ada data · ' + ranked.filter(x=>!x.hasData).length + ' belum diinput · urutan skor tertinggi ke terendah' : 'Belum ada produk. Tambahkan produk pertama untuk mulai mencatat tren.';
+    if (!ranked.length) { host.innerHTML = '<div class="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">Belum ada produk. Tekan + Produk untuk menambahkan.</div>'; return; }
+    const wrap = document.createElement('div'); wrap.className = 'overflow-x-auto rounded-lg border border-slate-800';
+    const table = document.createElement('table'); table.className = 'w-full border-collapse text-[11px]';
+    table.style.minWidth = '560px';
+    const thead = document.createElement('thead'); thead.className = 'bg-slate-800/80 text-slate-400';
+    const trh = document.createElement('tr');
+    ['Rank','Produk','Skor','CTR / Order / ATC','Status / rekomendasi','Aksi'].forEach(label => { const th=document.createElement('th'); th.className='border-b border-slate-700 px-2 py-2 text-left font-semibold whitespace-nowrap'; th.textContent=label; trh.appendChild(th); });
+    thead.appendChild(trh); table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    ranked.forEach((entry, idx) => {
+      const p=entry.product, t=p.trend||{}, status=productStatus(entry.score), tr=document.createElement('tr');
+      tr.className='border-b border-slate-800/80 last:border-0 hover:bg-slate-800/30';
+      const rank=document.createElement('td'); rank.className='px-2 py-2 align-top text-emerald-300 whitespace-nowrap'; rank.textContent=entry.hasData?'#'+(idx+1):'—'; tr.appendChild(rank);
+      const nameCell=document.createElement('td'); nameCell.className='px-2 py-2 align-top';
+      const name=document.createElement('button'); name.type='button'; name.className='max-w-[140px] truncate text-left font-semibold text-slate-100'; name.textContent=p.name||'Produk tanpa nama'; name.title='Buka tautan produk'; name.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');}); nameCell.appendChild(name);
+      const date=document.createElement('div'); date.className='mt-0.5 text-[9px] text-slate-500'; date.textContent=entry.hasData?productDateLabel(p.updatedAt):'Belum diinput'; nameCell.appendChild(date); tr.appendChild(nameCell);
+      const scoreCell=document.createElement('td'); scoreCell.className='px-2 py-2 align-top whitespace-nowrap';
+      const badge=document.createElement('span'); badge.className='inline-block rounded px-1.5 py-0.5 font-bold '+(entry.score===null?'bg-amber-500/10 text-amber-300':entry.score>=80?'bg-emerald-500/15 text-emerald-300':entry.score>=65?'bg-yellow-500/15 text-yellow-300':'bg-rose-500/15 text-rose-300'); badge.textContent=entry.score===null?'—':entry.score+'/100'; scoreCell.appendChild(badge); tr.appendChild(scoreCell);
+      const met=document.createElement('td'); met.className='px-2 py-2 align-top whitespace-nowrap text-slate-300'; met.textContent='CTR '+compactMetric(t.ctr,'ctr')+' · Ord '+compactMetric(t.orders,'orders')+' · ATC '+compactMetric(t.cart,'cart'); const cr=document.createElement('div'); cr.className='mt-0.5 text-[9px] text-slate-500'; cr.textContent='Kreator '+compactMetric(t.creators,'creators'); met.appendChild(cr); tr.appendChild(met);
+      const statusCell=document.createElement('td'); statusCell.className='px-2 py-2 align-top'; const st=document.createElement('div'); st.className='whitespace-nowrap font-semibold '+status.color; st.textContent=status.label; const note=document.createElement('div'); note.className='mt-0.5 max-w-[150px] whitespace-normal text-[10px] text-slate-400'; note.textContent=status.note; statusCell.append(st,note); tr.appendChild(statusCell);
+      const actions=document.createElement('td'); actions.className='px-2 py-2 align-top whitespace-nowrap'; const edit=document.createElement('button'); edit.type='button'; edit.className='rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300'; edit.textContent='Edit'; edit.addEventListener('click',()=>openProductEditor(p.id)); const open=document.createElement('button'); open.type='button'; open.className='ml-1 rounded bg-emerald-600/20 px-2 py-1 text-[10px] text-emerald-300'; open.textContent='Buka'; open.addEventListener('click',()=>{const link=safeProductUrl(p.url);if(link)window.open(link,'_blank','noopener,noreferrer');}); const del=document.createElement('button'); del.type='button'; del.className='ml-1 rounded px-1 py-1 text-[10px] text-rose-400'; del.textContent='×'; del.title='Hapus produk'; del.addEventListener('click',()=>deleteAnalysisProduct(p.id)); actions.append(edit,open,del); tr.appendChild(actions);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody); wrap.appendChild(table); host.appendChild(wrap);
   }
   window.openProductEditor = openProductEditor;
   window.closeProductEditor = closeProductEditor;
