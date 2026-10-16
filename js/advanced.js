@@ -648,7 +648,7 @@
         // Only accept an inline metric value when it is the first token after the label.
         // OCR rows often flatten the delta below the value (e.g. "Jumlah kreator 6,4K ▲ 459");
         // searching the whole tail can accidentally select the delta instead of the total.
-        const inlineMatch=tail.match(/^\\s*[:：]?\\s*(\\d[\\d.,]*(?:\\s*[KMB])?\\s*(?:%|％)?)(?=\\s|$)/i);
+        const inlineMatch=tail.match(/^\s*[:：]?\s*(\d[\d.,]*(?:\s*[KMB])?\s*(?:%|％)?)(?=\s|$)/i);
         const inline=inlineMatch?parseNum(inlineMatch[1],key):null;
         if(inline!==null&&(key!=='ctr'||/%|％/.test(inlineMatch[1])))out[key]=inline;
         found.push({key,ri,x});
