@@ -473,7 +473,7 @@
       // Match metric labels, not any mention of these words elsewhere in the screenshot.
       orders: /\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
       ctr: /\b(?:CTR|click.?through.?rate|rasio klik(?: tayang)?|rasio klik)\b/i,
-      creators: /\b(?:jumlah\s+kreator|jumlah\s+creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
+      creators: /\b(?:jumlah\s+kreator|jumlah\s+creator(?:s)?|affiliate\s+creator(?:s)?|creator\s+affiliate)\b/i,
       cart: /\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
     const metricKeys = Object.keys(labelRules);
@@ -594,7 +594,7 @@
     const rules={
       orders:/\b(?:pesanan|orders?|jumlah\s+penjualan|total\s+pesanan)\b/i,
       ctr:/\b(?:CTR|click.?through.?rate|rasio\s+klik(?:\s+tayang)?)\b/i,
-      creators:/\b(?:jumlah\s+kreator|jumlah\s+creators?|kreator|creators?|affiliate\s+creators?|creator\s+affiliate)\b/i,
+      creators:/\b(?:jumlah\s+kreator|jumlah\s+creator(?:s)?|affiliate\s+creator(?:s)?|creator\s+affiliate)\b/i,
       // The app UI/OCR may split this long label across lines or recognize only one keyword.
       cart:/\b(?:pembeli|memasukkan|menambahkan|masuk\s+ke|add.?to.?cart|cart\s+adds?|keranjang|tambah(?:kan)?|ditambahkan|produk\s+ditambahkan)\b/i
     };
