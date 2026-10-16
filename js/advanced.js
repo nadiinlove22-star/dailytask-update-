@@ -493,28 +493,33 @@
     const isOtherMetricLabel = (line, key) => metricKeys.some(other => other !== key && labelRules[other].test(line));
     const findMetric = key => {
       const rule = labelRules[key];
+      const readValue = raw => {
+        const source = String(raw || '');
+        // CTR must come from an explicitly percentage-marked value. This prevents nearby
+        // counts (for example orders or creators) from being mistaken for CTR.
+        if (key === 'ctr') {
+          const match = source.match(/(\d[\d.,]*)\s*(?:%|％)/);
+          return match ? parseNumber(match[1]) : null;
+        }
+        return parseNumber(source);
+      };
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const label = rule.exec(line);
         if (!label) continue;
-        // Cut off any later metric on the same OCR line so values cannot bleed between fields.
         let tail = line.slice(label.index + label[0].length);
         const nextLabels = metricKeys.map(k => k === key ? null : labelRules[k].exec(tail))
           .filter(Boolean).sort((a,b) => a.index-b.index);
         if (nextLabels.length) tail = tail.slice(0, nextLabels[0].index);
-        // Allow punctuation such as "(%)" between the CTR label and its value.
-        const inlineValue = parseNumber(tail);
+        const inlineValue = readValue(tail);
         if (inlineValue !== null) return inlineValue;
-        // Some OCR engines reorder a card's value before its label (e.g. "1,2K Pesanan").
-        const beforeLabel = parseNumber(line.slice(0, label.index));
+        const beforeLabel = readValue(line.slice(0, label.index));
         if (beforeLabel !== null) return beforeLabel;
-        // Some dashboards put the number on the next line. Read only nearby number-only
-        // lines and stop before another metric label or unrelated text.
         for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
           const next = lines[j];
           if (metricKeys.some(k => k !== key && labelRules[k].test(next))) break;
-          const value = parseNumber(next);
-          if (value !== null && (/^\s*[\d.,]+\s*[KMB]?\s*%?\s*$/i.test(next) || next.length <= 24)) return value;
+          const value = readValue(next);
+          if (value !== null && (key === 'ctr' || /^\s*[\d.,]+\s*[KMB]?\s*%?\s*$/i.test(next) || next.length <= 24)) return value;
           if (next.length > 45 || /[A-Za-zÀ-ÿ]{3,}/.test(next)) break;
         }
       }
@@ -534,19 +539,23 @@
         !/^(?:Rp\s*)?[\d.,]+(?:\s*(?:rb|ribu|jt|juta))?$/i.test(clean);
     };
 
-    // On product trend screenshots, the title usually sits immediately after a seller badge
-    // such as Mall, PowerShop, or Beli Lokal. Prefer that line over headings/statistics.
+    // The product title is in the header area after the seller badge and before "Ringkasan".
+    // Search that whole bounded area rather than only the next three OCR lines.
     let name = '';
     for (let i = 0; i < lines.length; i++) {
       if (!shopBadge.test(lines[i])) continue;
       const remainder = lines[i].replace(shopBadge, '').replace(/^[\s:|·•\-–—]+/, '').trim();
       if (plausibleTitle(remainder)) { name = remainder; break; }
-      for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
-        if (shopBadge.test(lines[j]) && !plausibleTitle(lines[j])) continue;
-        if (plausibleTitle(lines[j])) { name = lines[j]; break; }
+      const headerCandidates = [];
+      for (let j = i + 1; j < lines.length; j++) {
+        if (/\bringkasan\b/i.test(lines[j])) break;
+        if (shopBadge.test(lines[j])) continue;
         if (metricLine(lines[j])) break;
+        if (plausibleTitle(lines[j])) headerCandidates.push(lines[j]);
       }
-      if (name) break;
+      // Usually the title is the last meaningful line before Ringkasan; prefer it to
+      // intermediate seller/UI text if OCR split the header across multiple lines.
+      if (headerCandidates.length) { name = headerCandidates[headerCandidates.length - 1]; break; }
     }
     // Never guess the product name from an arbitrary line: this was filling headings or labels as the title.
     name = name.replace(/^[•·|\-–—]+\s*/, '').trim();
