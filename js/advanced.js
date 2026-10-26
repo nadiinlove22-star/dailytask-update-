@@ -894,27 +894,46 @@
     if(!progressData.__affiliateGridDone||typeof progressData.__affiliateGridDone!=='object') progressData.__affiliateGridDone={};
     return progressData.__affiliateGridDone;
   }
+  async function toggleAffiliateSlotDone(dateKey, time) {
+    const itemKey=dateKey+'_'+time;
+    const state=affiliateGridDoneData();
+    if(state[itemKey]===true) delete state[itemKey]; else state[itemKey]=true;
+    if(typeof saveData==='function') await saveData();
+    renderAffiliateSchedule();
+  }
+
   function showAffiliateProductTimes(dateKey, productCode) {
     const title=$('affiliate-product-detail-title'), timesHost=$('affiliate-product-detail-times');
     if(!title||!timesHost) return;
     const parts=dateKey.split('-').map(Number);
     const d=new Date(parts[0],parts[1]-1,parts[2],12,0,0,0);
     const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-    title.textContent='Produk '+productCode+' · '+dayNames[d.getDay()]+', '+affiliateGridDateLabel(d);
+    title.textContent='Produk '+productCode+' · '+dayNames[d.getDay()]+', '+affiliateGridDateLabel(d)+' — ketuk jam untuk menandai selesai';
     timesHost.innerHTML='';
     const shift=Math.floor((d.getTime()-affiliateGridStartDate().getTime())/86400000)%5;
+    const done=affiliateGridDoneData();
     const matching=[];
     affiliateGridBase.forEach((baseCode,slot)=>{
       const code=String.fromCharCode((baseCode.charCodeAt(0)-65+shift)%5+65);
-      if(code===productCode) matching.push(affiliateGridTimes[slot]);
+      if(code===productCode) matching.push({time:affiliateGridTimes[slot],done:done[dateKey+'_'+affiliateGridTimes[slot]]===true});
     });
     if(!matching.length){
       const empty=document.createElement('span');empty.className='text-xs text-slate-400';empty.textContent='Tidak ada slot untuk produk ini.';timesHost.appendChild(empty);return;
     }
-    matching.forEach(time=>{
-      const chip=document.createElement('span');
-      chip.className='rounded-md border border-emerald-700 bg-emerald-900/50 px-3 py-2 text-sm font-bold text-emerald-200';
-      chip.textContent=time;
+    matching.forEach(item=>{
+      const chip=document.createElement('button');
+      chip.type='button';
+      chip.className='rounded-md border px-3 py-2 text-sm font-bold transition-colors';
+      chip.style.borderColor=item.done?'#2563eb':'#0f766e';
+      chip.style.background=item.done?'#2563eb':'#064e3b';
+      chip.style.color='#ffffff';
+      chip.textContent=(item.done?'✓ ':'')+item.time;
+      chip.title=item.done?'Tandai belum selesai':'Tandai jam ini selesai';
+      chip.setAttribute('aria-pressed',item.done?'true':'false');
+      chip.addEventListener('click',async()=>{
+        await toggleAffiliateSlotDone(dateKey,item.time);
+        showAffiliateProductTimes(dateKey,productCode);
+      });
       timesHost.appendChild(chip);
     });
   }
@@ -964,21 +983,13 @@
         td.style.background=isToday?'#173526':(day%2?'#18231c':'#111713');
         const button=document.createElement('button');button.type='button';
         button.textContent=isDone?'✓ '+product:product;
-        button.title=(isDone?'Sudah upload':'Belum upload')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk mengubah status';
+        button.title=(isDone?'Sudah selesai':'Belum selesai')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk melihat jam produk ini';
         button.setAttribute('aria-pressed',isDone?'true':'false');
         button.className='flex min-h-[42px] w-full min-w-[58px] items-center justify-center px-2 font-bold transition-colors';
-        button.style.color=isDone?'#ffffff':'#b7d8c1';button.style.background=isDone?'#059669':'transparent';
-        button.addEventListener('click',async()=>{
-          // Show all upload times for this product on the selected date, and toggle upload status.
+        // Completed slots are blue; uncompleted slots retain the schedule's original style.
+        button.style.color=isDone?'#ffffff':'#b7d8c1';button.style.background=isDone?'#2563eb':'transparent';
+        button.addEventListener('click',()=>{
           showAffiliateProductTimes(key,product);
-          const state=affiliateGridDoneData();
-          if(state[itemKey]===true) delete state[itemKey]; else state[itemKey]=true;
-          const checked=state[itemKey]===true;
-          button.textContent=checked?'✓ '+product:product;
-          button.setAttribute('aria-pressed',checked?'true':'false');
-          button.style.color=checked?'#ffffff':'#b7d8c1';button.style.background=checked?'#059669':'transparent';
-          button.title=(checked?'Sudah upload':'Belum upload')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk melihat jadwal dan mengubah status';
-          if(typeof saveData==='function') await saveData();
         });
         td.appendChild(button);tr.appendChild(td);
       });
