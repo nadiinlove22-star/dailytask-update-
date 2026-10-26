@@ -292,6 +292,9 @@
     $('product-editor-ctr').value = trend.ctr ?? '';
     $('product-editor-creators').value = trend.creators ?? '';
     $('product-editor-cart').value = trend.cart ?? '';
+    $('product-editor-period-start').value = product && product.trendPeriod && product.trendPeriod.start || '';
+    $('product-editor-period-end').value = product && product.trendPeriod && product.trendPeriod.end || '';
+    $('product-editor-trend-changes').value = JSON.stringify(product && product.trendChanges || {});
     $('product-editor-date').textContent = productDateLabel(product && product.updatedAt);
     $('product-editor-error').classList.add('hidden');
     modal.classList.remove('hidden'); modal.classList.add('flex');
@@ -311,14 +314,22 @@
     const hasOldMetrics = old && old.trend && Object.values(old.trend).some(v => v !== null && v !== undefined && v !== '');
     const trend = {};
     Object.keys(raw).forEach(k => { trend[k] = raw[k].trim() === '' ? null : Number(raw[k]); });
-    const item = old || { id: 'prod-' + Date.now() };
+    const list = getAnalysisProducts();
+    const duplicateByUrl = !old ? list.find(p => safeProductUrl(p.url) === url) : null;
+    const item = old || duplicateByUrl || { id: 'prod-' + Date.now() };
     item.name = name; item.url = url;
     if (hasNewMetrics || !hasOldMetrics) {
       item.trend = trend;
       item.updatedAt = hasNewMetrics ? new Date().toISOString() : null;
     }
-    const list = getAnalysisProducts();
-    if (!old) list.push(item);
+    const periodStart = $('product-editor-period-start')?.value || '';
+    const periodEnd = $('product-editor-period-end')?.value || '';
+    item.trendPeriod = periodStart || periodEnd ? { start: periodStart || null, end: periodEnd || null } : (item.trendPeriod || null);
+    try {
+      const changes = JSON.parse($('product-editor-trend-changes')?.value || '{}');
+      if (changes && typeof changes === 'object') item.trendChanges = changes;
+    } catch (_) {}
+    if (!old && !duplicateByUrl) list.push(item);
     progressData.__analysisProducts = list;
     if (typeof saveData === 'function') {
       const ok = await saveData();
@@ -750,8 +761,63 @@
     if (img) img.src = URL.createObjectURL(file);
     if (status) status.textContent = 'Memuat OCR…';
     if (button) { button.disabled = true; button.textContent = 'Membaca gambar…'; }
-    say('Sedang membaca teks screenshot di perangkat ini. Proses pertama bisa memerlukan waktu.');
+    say('Mencoba AI vision untuk membaca label, angka, nama produk, dan periode…');
     try {
+      // AI vision is the primary reader. OCR remains a fallback if AI is unavailable.
+      try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient && supabaseClient.functions) {
+          const imageDataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Gagal memuat gambar.'));
+            reader.readAsDataURL(file);
+          });
+          const aiResponse = await supabaseClient.functions.invoke('analyze-product-screenshot', {
+            body: { image: imageDataUrl, productUrl: productUrl || '' }
+          });
+          const aiData = aiResponse && aiResponse.data && aiResponse.data.data;
+          if (!aiResponse.error && aiResponse.data && aiResponse.data.ok && aiData) {
+            const existingAi = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
+            closeAddProductModal();
+            openProductEditor(existingAi ? existingAi.id : null);
+            $('product-editor-id').value = existingAi ? existingAi.id : '';
+            $('product-editor-name').value = pastedTitle || String(aiData.name || aiData.fullName || '').trim();
+            $('product-editor-url').value = productUrl || '';
+            $('product-editor-orders').value = aiData.orders ?? '';
+            $('product-editor-ctr').value = aiData.ctr ?? '';
+            $('product-editor-creators').value = aiData.creators ?? '';
+            $('product-editor-cart').value = aiData.cart ?? '';
+            $('product-editor-period-start').value = /^\\d{4}-\\d{2}-\\d{2}$/.test(aiData.periodStart || '') ? aiData.periodStart : '';
+            $('product-editor-period-end').value = /^\\d{4}-\\d{2}-\\d{2}$/.test(aiData.periodEnd || '') ? aiData.periodEnd : '';
+            $('product-editor-trend-changes').value = JSON.stringify(aiData.changes || {});
+            const metricCountAi = ['orders','ctr','creators','cart'].filter(k => aiData[k] !== null && aiData[k] !== undefined && aiData[k] !== '').length;
+            const uncertain = Array.isArray(aiData.uncertainFields) ? aiData.uncertainFields : [];
+            const missing = ['name','orders','ctr','creators','cart'].filter(k => k === 'name' ? !String(aiData.name || aiData.fullName || '').trim() : aiData[k] === null || aiData[k] === undefined || aiData[k] === '');
+            const reviewMessage = 'AI vision selesai: ' + (aiData.name || aiData.fullName || 'nama belum terbaca') +
+              '. Metrik terbaca ' + metricCountAi + '/4.' +
+              (aiData.periodStart && aiData.periodEnd ? ' Periode ' + aiData.periodStart + '–' + aiData.periodEnd + '.' : ' Periode perlu diperiksa.') +
+              (uncertain.length || missing.length ? ' Periksa field: ' + [...new Set([...uncertain, ...missing])].join(', ') + '.' : '') +
+              (productUrl ? '' : ' Link produk wajib ditempel sebelum menyimpan.');
+            if (status) status.textContent = reviewMessage;
+            say(reviewMessage, missing.length || uncertain.length ? 'text-amber-300' : 'text-emerald-300');
+            if (missing.length || uncertain.length || Number(aiData.confidence) < 0.8) {
+              $('product-editor-error').textContent = 'Periksa hasil AI sebelum menyimpan. AI menandai field yang tidak pasti; jangan anggap nilainya benar tanpa pemeriksaan.';
+              $('product-editor-error').classList.remove('hidden');
+            } else {
+              $('product-editor-error').classList.add('hidden');
+            }
+            return;
+          }
+          const aiMessage = aiResponse && aiResponse.data && aiResponse.data.error
+            ? aiResponse.data.error
+            : (aiResponse && aiResponse.error ? aiResponse.error.message : 'AI vision tidak tersedia.');
+          if (status) status.textContent = 'AI vision gagal: ' + aiMessage + ' Mencoba OCR cadangan…';
+          say('AI vision belum berhasil (' + aiMessage + '). Mencoba OCR cadangan…', 'text-amber-300');
+        }
+      } catch (aiError) {
+        console.warn('AI vision gagal; mencoba OCR cadangan:', aiError);
+        if (status) status.textContent = 'AI vision tidak tersedia. Mencoba OCR cadangan…';
+      }
       const Tesseract = await loadAnalysisOcr();
       // Gunakan file asli terlebih dahulu. Pemrosesan grayscale/upscale sebelumnya
       // berisiko merusak teks kecil pada screenshot berwarna; pertahankan fallback bahasa.
