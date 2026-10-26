@@ -910,6 +910,8 @@
     const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
     title.textContent='Produk '+productCode+' · '+dayNames[d.getDay()]+', '+affiliateGridDateLabel(d)+' — ketuk jam untuk menandai selesai';
     timesHost.innerHTML='';
+    // Keep the selected product/date highlighted green until another cell is selected.
+    window.__affiliateGridSelected={dateKey,productCode};
     const shift=Math.floor((d.getTime()-affiliateGridStartDate().getTime())/86400000)%5;
     const done=affiliateGridDoneData();
     const matching=[];
@@ -983,12 +985,17 @@
         td.style.background=isToday?'#173526':(day%2?'#18231c':'#111713');
         const button=document.createElement('button');button.type='button';
         button.textContent=isDone?'✓ '+product:product;
-        button.title=(isDone?'Sudah selesai':'Belum selesai')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk melihat jam produk ini';
+        button.title=(isDone?'Sudah selesai':'Belum selesai')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk memilih produk';
         button.setAttribute('aria-pressed',isDone?'true':'false');
         button.className='flex min-h-[42px] w-full min-w-[58px] items-center justify-center px-2 font-bold transition-colors';
-        // Completed slots are blue; uncompleted slots retain the schedule's original style.
-        button.style.color=isDone?'#ffffff':'#b7d8c1';button.style.background=isDone?'#2563eb':'transparent';
+        // Blue means the upload slot is completed; green means the cell is currently selected.
+        const selected=!!(window.__affiliateGridSelected&&window.__affiliateGridSelected.dateKey===key&&window.__affiliateGridSelected.productCode===product);
+        button.style.color=isDone?'#ffffff':(selected?'#ffffff':'#b7d8c1');
+        button.style.background=isDone?'#2563eb':(selected?'#059669':'transparent');
+        button.style.boxShadow=selected&&!isDone?'inset 0 0 0 2px #34d399':'none';
         button.addEventListener('click',()=>{
+          showAffiliateProductTimes(key,product);
+          renderAffiliateSchedule();
           showAffiliateProductTimes(key,product);
         });
         td.appendChild(button);tr.appendChild(td);
