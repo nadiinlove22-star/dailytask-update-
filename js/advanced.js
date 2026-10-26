@@ -787,8 +787,8 @@
             $('product-editor-ctr').value = aiData.ctr ?? '';
             $('product-editor-creators').value = aiData.creators ?? '';
             $('product-editor-cart').value = aiData.cart ?? '';
-            $('product-editor-period-start').value = /^\\d{4}-\\d{2}-\\d{2}$/.test(aiData.periodStart || '') ? aiData.periodStart : '';
-            $('product-editor-period-end').value = /^\\d{4}-\\d{2}-\\d{2}$/.test(aiData.periodEnd || '') ? aiData.periodEnd : '';
+            $('product-editor-period-start').value = /^\d{4}-\d{2}-\d{2}$/.test(aiData.periodStart || '') ? aiData.periodStart : '';
+            $('product-editor-period-end').value = /^\d{4}-\d{2}-\d{2}$/.test(aiData.periodEnd || '') ? aiData.periodEnd : '';
             $('product-editor-trend-changes').value = JSON.stringify(aiData.changes || {});
             const metricCountAi = ['orders','ctr','creators','cart'].filter(k => aiData[k] !== null && aiData[k] !== undefined && aiData[k] !== '').length;
             const uncertain = Array.isArray(aiData.uncertainFields) ? aiData.uncertainFields : [];
