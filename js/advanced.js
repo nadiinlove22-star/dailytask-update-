@@ -737,198 +737,66 @@
   }
 
   async function readAnalysisScreenshot() {
-    const fileInput = $('analysis-screenshot');
-    const file = fileInput && fileInput.files && fileInput.files[0];
-    const urlInput = $('analysis-paste-url');
-    const feedback = $('analysis-paste-feedback');
-    const preview = $('analysis-screenshot-preview');
-    const img = $('analysis-screenshot-image');
-    const status = $('analysis-screenshot-status');
-    const button = $('analysis-read-screenshot');
-    const say = (message, kind='text-slate-400') => { if(feedback){feedback.textContent=message;feedback.className='mt-2 text-[10px] '+kind;} };
+    const fileInput = $('analysis-screenshot'), file = fileInput && fileInput.files && fileInput.files[0];
+    const urlInput = $('analysis-paste-url'), feedback = $('analysis-paste-feedback');
+    const preview = $('analysis-screenshot-preview'), img = $('analysis-screenshot-image');
+    const status = $('analysis-screenshot-status'), button = $('analysis-read-screenshot');
+    const say = (message, kind='text-slate-400') => {
+      if (feedback) { feedback.textContent = message; feedback.className = 'mt-2 text-[10px] ' + kind; }
+    };
     if (!file || !/^image\//i.test(file.type)) { say('Pilih screenshot berupa gambar terlebih dahulu.', 'text-rose-400'); return; }
     if (file.size > 12 * 1024 * 1024) { say('Ukuran gambar terlalu besar. Gunakan screenshot di bawah 12 MB.', 'text-rose-400'); return; }
-    // Screenshot tetap boleh dibaca meskipun link belum ditempel. Link bisa diisi
-    // setelah hasil OCR masuk ke formulir; jangan hentikan proses OCR di tahap ini.
-    const pastedProductText = String(urlInput && urlInput.value || '').replace(/\s+/g, ' ').trim();
-    const pastedUrlMatch = pastedProductText.match(/https?:\/\/[^\s<>"']+/i);
-    const productUrl = safeProductUrl(pastedUrlMatch ? pastedUrlMatch[0].replace(/[),.;]+$/, '') : pastedProductText);
-    const pastedTitle = pastedUrlMatch
-      ? pastedProductText.slice(0, pastedProductText.indexOf(pastedUrlMatch[0])).trim()
-          .replace(/^[\s|—–:-]+|[\s|—–:-]+$/g, '').split(/\s+/).filter(Boolean).slice(0, 4).join(' ')
-      : '';
+    const pasted = String(urlInput && urlInput.value || '').replace(/\s+/g, ' ').trim();
+    const urlMatch = pasted.match(/https?:\/\/[^\s<>"']+/i);
+    const productUrl = safeProductUrl(urlMatch ? urlMatch[0].replace(/[),.;]+$/, '') : pasted);
+    const pastedTitle = urlMatch ? pasted.slice(0, pasted.indexOf(urlMatch[0])).trim().replace(/^[\s|—–:-]+|[\s|—–:-]+$/g, '').split(/\s+/).filter(Boolean).slice(0,4).join(' ') : '';
     if (preview) preview.classList.remove('hidden');
     if (img) img.src = URL.createObjectURL(file);
-    if (status) status.textContent = 'Memuat OCR…';
-    if (button) { button.disabled = true; button.textContent = 'Membaca gambar…'; }
-    say('Mencoba AI vision untuk membaca label, angka, nama produk, dan periode…');
+    if (button) { button.disabled = true; button.textContent = 'Membaca dengan AI…'; }
+    if (status) status.textContent = 'Mengirim screenshot ke Gemini AI…';
+    say('Hanya Gemini AI yang digunakan. OCR dinonaktifkan.', 'text-sky-300');
     try {
-      // AI vision is the primary reader. OCR remains a fallback if AI is unavailable.
-      try {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient && supabaseClient.functions) {
-          const imageDataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result || ''));
-            reader.onerror = () => reject(new Error('Gagal memuat gambar.'));
-            reader.readAsDataURL(file);
-          });
-          const aiResponse = await supabaseClient.functions.invoke('analyze-product-screenshot', {
-            body: { image: imageDataUrl, productUrl: productUrl || '' }
-          });
-          const aiData = aiResponse && aiResponse.data && aiResponse.data.data;
-          if (!aiResponse.error && aiResponse.data && aiResponse.data.ok && aiData) {
-            const existingAi = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
-            closeAddProductModal();
-            openProductEditor(existingAi ? existingAi.id : null);
-            $('product-editor-id').value = existingAi ? existingAi.id : '';
-            $('product-editor-name').value = pastedTitle || String(aiData.name || aiData.fullName || '').trim();
-            $('product-editor-url').value = productUrl || '';
-            $('product-editor-orders').value = aiData.orders ?? '';
-            $('product-editor-ctr').value = aiData.ctr ?? '';
-            $('product-editor-creators').value = aiData.creators ?? '';
-            $('product-editor-cart').value = aiData.cart ?? '';
-            $('product-editor-period-start').value = /^\d{4}-\d{2}-\d{2}$/.test(aiData.periodStart || '') ? aiData.periodStart : '';
-            $('product-editor-period-end').value = /^\d{4}-\d{2}-\d{2}$/.test(aiData.periodEnd || '') ? aiData.periodEnd : '';
-            $('product-editor-trend-changes').value = JSON.stringify(aiData.changes || {});
-            const metricCountAi = ['orders','ctr','creators','cart'].filter(k => aiData[k] !== null && aiData[k] !== undefined && aiData[k] !== '').length;
-            const uncertain = Array.isArray(aiData.uncertainFields) ? aiData.uncertainFields : [];
-            const missing = ['name','orders','ctr','creators','cart'].filter(k => k === 'name' ? !String(aiData.name || aiData.fullName || '').trim() : aiData[k] === null || aiData[k] === undefined || aiData[k] === '');
-            const reviewMessage = 'AI vision selesai: ' + (aiData.name || aiData.fullName || 'nama belum terbaca') +
-              '. Metrik terbaca ' + metricCountAi + '/4.' +
-              (aiData.periodStart && aiData.periodEnd ? ' Periode ' + aiData.periodStart + '–' + aiData.periodEnd + '.' : ' Periode perlu diperiksa.') +
-              (uncertain.length || missing.length ? ' Periksa field: ' + [...new Set([...uncertain, ...missing])].join(', ') + '.' : '') +
-              (productUrl ? '' : ' Link produk wajib ditempel sebelum menyimpan.');
-            if (status) status.textContent = reviewMessage;
-            say(reviewMessage, missing.length || uncertain.length ? 'text-amber-300' : 'text-emerald-300');
-            if (missing.length || uncertain.length || Number(aiData.confidence) < 0.8) {
-              $('product-editor-error').textContent = 'Periksa hasil AI sebelum menyimpan. AI menandai field yang tidak pasti; jangan anggap nilainya benar tanpa pemeriksaan.';
-              $('product-editor-error').classList.remove('hidden');
-            } else {
-              $('product-editor-error').classList.add('hidden');
-            }
-            return;
-          }
-          const aiMessage = aiResponse && aiResponse.data && aiResponse.data.error
-            ? aiResponse.data.error
-            : (aiResponse && aiResponse.error ? aiResponse.error.message : 'AI vision tidak tersedia.');
-          if (status) status.textContent = 'AI vision gagal: ' + aiMessage + ' Mencoba OCR cadangan…';
-          say('AI vision belum berhasil (' + aiMessage + '). Mencoba OCR cadangan…', 'text-amber-300');
-        }
-      } catch (aiError) {
-        console.warn('AI vision gagal; mencoba OCR cadangan:', aiError);
-        if (status) status.textContent = 'AI vision tidak tersedia. Mencoba OCR cadangan…';
-      }
-      const Tesseract = await loadAnalysisOcr();
-      // Gunakan file asli terlebih dahulu. Pemrosesan grayscale/upscale sebelumnya
-      // berisiko merusak teks kecil pada screenshot berwarna; pertahankan fallback bahasa.
-      let result = await Tesseract.recognize(file, 'ind+eng', {
-        logger: m => { if(status && m.status) status.textContent = m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
+      if (typeof supabaseClient === 'undefined' || !supabaseClient || !supabaseClient.functions) throw new Error('Koneksi Supabase belum tersedia.');
+      const imageDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Gagal memuat gambar.'));
+        reader.readAsDataURL(file);
       });
-      let rawOcrText = result && result.data && result.data.text || '';
-      if (rawOcrText.trim().length < 8) {
-        if (status) status.textContent = 'Mencoba pembacaan alternatif…';
-        result = await Tesseract.recognize(file, 'eng', {
-          logger: m => { if(status && m.status) status.textContent = 'Mode alternatif: ' + m.status + (m.progress != null ? ' ' + Math.round(m.progress*100) + '%' : ''); }
-        });
-        const fallbackText = result && result.data && result.data.text || '';
-        if (fallbackText.trim().length > rawOcrText.trim().length) rawOcrText = fallbackText;
+      const response = await supabaseClient.functions.invoke('analyze-product-screenshot', { body: { image: imageDataUrl, productUrl: productUrl || '' } });
+      const data = response && response.data && response.data.data;
+      if (response.error || !response.data || !response.data.ok || !data) {
+        throw new Error(response && response.data && response.data.error ? response.data.error : (response && response.error ? response.error.message : 'Gemini tidak mengembalikan hasil.'));
       }
-      // Use spatial word boxes for the 2x2 metric cards; fall back to text-only parsing
-      // only when this OCR engine did not return usable coordinates.
-      // Read the product-header region separately at higher resolution. Full-screen OCR often
-      // misses the tiny product title while correctly reading the larger trend metrics.
-      let headerText = '';
-      try {
-        const bitmap = await createImageBitmap(file);
-        const cropHeight = Math.min(bitmap.height, Math.round(bitmap.height * 0.34));
-        const canvas = document.createElement('canvas');
-        const scale = Math.max(2, Math.min(3, 1800 / bitmap.width));
-        canvas.width = Math.round(bitmap.width * scale);
-        canvas.height = Math.round(cropHeight * scale);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(bitmap, 0, 0, bitmap.width, cropHeight, 0, 0, canvas.width, canvas.height);
-        bitmap.close && bitmap.close();
-        const headerResult = await Tesseract.recognize(canvas, 'ind+eng');
-        headerText = headerResult && headerResult.data && headerResult.data.text || '';
-      } catch (headerError) {
-        console.warn('OCR judul produk gagal; lanjutkan dengan hasil utama:', headerError);
-      }
-      const positioned = parseAnalysisScreenshotLayout(result && result.data);
-      const textParsed = parseAnalysisScreenshotText(rawOcrText);
-      // Coordinate parsing is primary; use text parsing only for fields the spatial parser could not confidently find.
-      // When OCR supplies word coordinates, never silently fill a missing field
-      // from flattened text: that fallback can borrow a neighboring card's number
-      // or interpret unrelated text as a product name. Missing values stay blank
-      // and are surfaced for review. Text-only parsing is used only when coordinates
-      // are unavailable altogether.
-      const parsed = positioned || textParsed;
-      // When the paste field contains "product title + URL", the clipboard title is
-      // more reliable than OCR for the product name; keep it capped at four words.
-      if (pastedTitle) parsed.name = pastedTitle;
-      // Do not infer creator count from flattened text: OCR may place the delta (+7)
-      // between "Jumlah kreator" and the cart label. Keep the coordinate-based value
-      // (e.g. 1,1K => 1100) instead of overwriting it with the change indicator.
-      if (!parsed.name && headerText.trim()) {
-        const headerParsed = parseAnalysisScreenshotText(headerText);
-        if (headerParsed.name) parsed.name = headerParsed.name;
-        else {
-          // On this marketplace the title sits immediately below the tab row and before rating/sales.
-          const headerLines = headerText.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
-          const tabs = headerLines.findIndex(x=>/ringkasan/i.test(x));
-          if (tabs >= 0) {
-            for (let j=tabs+1;j<Math.min(headerLines.length,tabs+8);j++) {
-              let candidate=headerLines[j].replace(/\b(?:mall|official\s+store|power\s*shop)\b/ig,' ').replace(/\s+/g,' ').trim();
-              candidate=candidate.replace(/\s+(?:4[.,]9|5[.,]0)\s*\(?\d+\)?.*$/i,'').replace(/\s+\d+\s+terjual.*$/i,'').trim();
-              if(candidate.length>=8 && candidate.length<=180 &&
-                !/ringkasan|ulasan|deskripsi|rekomendasi|\b(?:terjual|rating|bintang|info promosi|tren produk|pesanan|kreator|keranjang)\b/i.test(candidate) &&
-                !/^\d[\d.,]*$/.test(candidate) &&
-                /[a-z]{3}/i.test(candidate)) { parsed.name=candidate; break; }
-            }
-          }
-        }
-      }
-      closeAddProductModal();
       const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
+      closeAddProductModal();
       if (existing) openProductEditor(existing.id);
-      else {
-        openProductEditor();
-        $('product-editor-id').value = '';
-        $('product-editor-url').value = productUrl || '';
-      }
-      // OCR must never leave stale values from a previously edited product in the form.
-      // Clear first, then populate only fields confidently parsed from this screenshot.
-      $('product-editor-name').value = parsed.name || '';
+      else { openProductEditor(); $('product-editor-id').value = ''; }
+      $('product-editor-name').value = pastedTitle || String(data.name || data.fullName || '').trim();
       $('product-editor-url').value = productUrl || '';
-      $('product-editor-orders').value = parsed.orders !== null ? parsed.orders : '';
-      $('product-editor-ctr').value = parsed.ctr !== null ? parsed.ctr : '';
-      $('product-editor-creators').value = parsed.creators !== null ? parsed.creators : '';
-      $('product-editor-cart').value = parsed.cart !== null ? parsed.cart : '';
-      const found = [parsed.name ? 'nama' : '', parsed.orders !== null ? 'pesanan' : '', parsed.ctr !== null ? 'CTR' : '', parsed.creators !== null ? 'kreator' : '', parsed.cart !== null ? 'add to cart' : ''].filter(Boolean);
-      const message = (found.length ? 'Terbaca: ' + found.join(', ') + '. Periksa hasilnya lalu tekan Simpan.' : 'Gambar berhasil dibaca, tetapi nama/metrik belum dikenali. Isi atau koreksi formulir secara manual sebelum menyimpan.') + (productUrl ? '' : ' Link produk belum diisi; tempel link di formulir sebelum menyimpan.');
+      $('product-editor-orders').value = data.orders ?? '';
+      $('product-editor-ctr').value = data.ctr ?? '';
+      $('product-editor-creators').value = data.creators ?? '';
+      $('product-editor-cart').value = data.cart ?? '';
+      const missing = [
+        (data.name || data.fullName || pastedTitle) ? '' : 'nama produk',
+        data.orders == null ? 'Pesanan' : '',
+        data.ctr == null ? 'CTR' : '',
+        data.creators == null ? 'Jumlah Kreator' : '',
+        data.cart == null ? 'Add to Cart' : ''
+      ].filter(Boolean);
+      const message = 'Hasil Gemini AI diterima. ' + (missing.length ? 'Periksa: ' + missing.join(', ') + '.' : 'Empat metrik terisi; periksa sebelum menyimpan.');
+      const error = $('product-editor-error');
+      if (error) { error.textContent = missing.length ? 'Gemini belum membaca dengan yakin: ' + missing.join(', ') + '.' : ''; error.classList.toggle('hidden', !missing.length); }
       if (status) status.textContent = message;
-      say(message, found.length ? 'text-emerald-300' : 'text-amber-300');
-      const metricCount = [parsed.orders, parsed.ctr, parsed.creators, parsed.cart].filter(v => v !== null).length;
-      if (metricCount < 4 || !parsed.name) {
-        const sample = rawOcrText.trim().replace(/\s+/g, ' ').slice(0, 500);
-        const missing = [
-          parsed.name ? '' : 'nama',
-          parsed.orders === null ? 'pesanan' : '',
-          parsed.ctr === null ? 'CTR' : '',
-          parsed.creators === null ? 'kreator' : '',
-          parsed.cart === null ? 'add-to-cart' : ''
-        ].filter(Boolean).join(', ');
-        const diagnostic = sample ? ' Teks OCR mentah: "' + sample + '".' : ' OCR tidak menghasilkan teks.';
-        $('product-editor-error').textContent = 'Data belum lengkap (' + missing + '). Koreksi manual sebelum menyimpan.' + diagnostic;
-        $('product-editor-error').classList.remove('hidden');
-        if (status) status.textContent = 'OCR selesai. Data yang belum dikenali dan teks pembacaan ditampilkan di formulir.';
-      }
+      say(message, missing.length ? 'text-amber-300' : 'text-emerald-300');
     } catch (e) {
-      console.error('OCR screenshot gagal:', e);
-      const message = String(e && e.message || 'OCR gagal membaca gambar.');
+      console.error('Gemini AI screenshot gagal:', e);
+      const message = 'Gemini AI gagal: ' + String(e && e.message || 'Kesalahan tidak diketahui') + '. OCR tidak dijalankan. Periksa konfigurasi/koneksi lalu coba lagi.';
       if (status) status.textContent = message;
-      say(message + ' Kamu masih bisa mengisi data secara manual.', 'text-rose-400');
+      say(message, 'text-rose-400');
     } finally {
-      if (button) { button.disabled = false; button.textContent = 'Baca Screenshot & Isi Data'; }
+      if (button) { button.disabled = false; button.textContent = 'Baca Screenshot dengan AI'; }
     }
   }
   window.openAddProductModal = openAddProductModal;
