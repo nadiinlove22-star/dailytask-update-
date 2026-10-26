@@ -893,11 +893,11 @@
     const key = affiliateDateKey();
     const all = affiliateSchedules();
     if (!all[key] || !Array.isArray(all[key].slots)) {
-      all[key] = { productIds: ['', '', '', ''], slots: Array.from({length:16}, (_,i)=>({time: String(i+6).padStart(2,'0')+':00', productIndex: Math.floor(i/4), done:false, angle:['Masalah → solusi','Demo cara pakai','Manfaat/keunggulan','Bukti atau perbandingan'][i%4]})) };
+      all[key] = { productIds: ['', '', '', ''], slots: Array.from({length:16}, (_,i)=>({time: String(i+6).padStart(2,'0')+':00', productIndex: i%4, done:false, angle:['Masalah → solusi','Demo cara pakai','Manfaat/keunggulan','Bukti atau perbandingan'][i%4]})) };
     }
     if (!Array.isArray(all[key].productIds)) all[key].productIds = ['', '', '', ''];
     if (!Array.isArray(all[key].slots) || all[key].slots.length !== 16) {
-      all[key].slots = Array.from({length:16}, (_,i)=>({time:String(i+6).padStart(2,'0')+':00',productIndex:Math.floor(i/4),done:false,angle:['Masalah → solusi','Demo cara pakai','Manfaat/keunggulan','Bukti atau perbandingan'][i%4]}));
+      all[key].slots = Array.from({length:16}, (_,i)=>({time:String(i+6).padStart(2,'0')+':00',productIndex:i%4,done:false,angle:['Masalah → solusi','Demo cara pakai','Manfaat/keunggulan','Bukti atau perbandingan'][i%4]}));
     }
     return all[key];
   }
@@ -914,7 +914,7 @@
         wrap.className = 'flex flex-col gap-1';
         const label = document.createElement('label');
         label.className = 'text-[10px] font-semibold text-slate-300';
-        label.textContent = 'Produk '+String.fromCharCode(65+i)+' · slot '+(i*4+1)+'–'+(i*4+4);
+        label.textContent = 'Produk '+String.fromCharCode(65+i)+' · jam '+(6+i)+':00, '+(10+i)+':00, '+(14+i)+':00, '+(18+i)+':00';
         const select = document.createElement('select');
         select.id = 'affiliate-product-pick-'+i;
         select.className = 'w-full rounded-lg border border-slate-700 px-2 py-2 text-xs text-white';
@@ -934,6 +934,8 @@
       list.innerHTML='';
       let done=0;
       schedule.slots.forEach((slot,i)=>{
+        // Interleave the four selected products throughout the day (A, B, C, D, repeat), including previously saved schedules.
+        slot.productIndex = i % 4;
         const product=products.find(p=>String(p.id)===String(schedule.productIds[slot.productIndex]||''));
         if(slot.done) done++;
         const card=document.createElement('div');
