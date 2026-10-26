@@ -766,7 +766,13 @@
       const response = await supabaseClient.functions.invoke('analyze-product-screenshot', { body: { image: imageDataUrl, productUrl: productUrl || '' } });
       const data = response && response.data && response.data.data;
       if (response.error || !response.data || !response.data.ok || !data) {
-        throw new Error(response && response.data && response.data.error ? response.data.error : (response && response.error ? response.error.message : 'Gemini tidak mengembalikan hasil.'));
+        const payload = response && response.data || {};
+        const code = payload.errorCode || (response && response.error ? 'SUPABASE_FUNCTION_INVOKE_ERROR' : 'GEMINI_EMPTY_RESULT');
+        const stage = payload.stage ? ' tahap=' + payload.stage : '';
+        const http = payload.providerStatus ? ' HTTP_GEMINI=' + payload.providerStatus : '';
+        const detail = payload.providerDetail || payload.detail || '';
+        const message = payload.error || (response && response.error ? response.error.message : 'Gemini tidak mengembalikan hasil.');
+        throw new Error('KODE=' + code + stage + http + ': ' + message + (detail ? ' | Detail: ' + detail : ''));
       }
       const existing = productUrl ? getAnalysisProducts().find(p => safeProductUrl(p.url) === productUrl) : null;
       closeAddProductModal();
