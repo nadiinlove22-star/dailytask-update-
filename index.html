@@ -252,13 +252,17 @@
                     <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-slate-800"></span>Belum upload</span>
                     <span class="text-emerald-300">Ketuk kode produk untuk menandai upload</span>
                 </div>
-                <div class="w-full overflow-x-auto rounded-lg border border-slate-800" style="overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;position:relative">
-                    <table id="affiliate-grid-table" class="border-collapse text-center text-[10px]" style="min-width:960px;width:max-content">
+                <div id="affiliate-grid-sticky-head" class="sticky top-0 z-20 overflow-x-auto rounded-t-lg border border-slate-800" style="overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;background:#244d35">
+                    <table id="affiliate-grid-head-table" class="border-collapse text-center text-[10px]" style="min-width:960px;width:max-content">
                         <thead id="affiliate-grid-head"></thead>
+                    </table>
+                </div>
+                <div id="affiliate-grid-scroll" class="w-full overflow-x-auto rounded-b-lg border border-t-0 border-slate-800" style="overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch">
+                    <table id="affiliate-grid-table" class="border-collapse text-center text-[10px]" style="min-width:960px;width:max-content">
                         <tbody id="affiliate-grid-body"></tbody>
                     </table>
                 </div>
-                <p class="mt-2 px-1 text-[10px] text-slate-500">Geser ke kiri/kanan untuk melihat semua jam. Kolom tanggal tetap menempel di kiri. Jadwal hari ini diberi sorotan khusus.</p>
+                <p class="mt-2 px-1 text-[10px] text-slate-500">Jam tetap terlihat saat scroll ke bawah. Geser tabel ke kiri/kanan untuk melihat jam lain; tanggal tetap menempel di kiri.</p>
             </section>
         </div>
 
@@ -392,9 +396,9 @@
     <!-- Urutan Import Harus Sesuai Dependensi -->
 <script src="js/config.js?v=20261017-46"></script>
 <script src="js/storage.js?v=20261017-46"></script>
-<script src="js/ui.js?v=20261027-51"></script>
-<script src="js/advanced.js?v=20261027-51"></script>
-<script src="js/app.js?v=20261027-51"></script>
+<script src="js/ui.js?v=20261027-52"></script>
+<script src="js/advanced.js?v=20261027-52"></script>
+<script src="js/app.js?v=20261027-52"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
