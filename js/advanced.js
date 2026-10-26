@@ -905,15 +905,8 @@
       th.className='border border-slate-700 px-2 py-3 font-bold text-white';
       th.style.background='#244d35';
       th.style.minWidth=index===0?'118px':'58px';
-      // Keep the hour headings pinned to the top while the page scrolls vertically.
-      th.style.position='sticky';
-      th.style.top='0';
-      th.style.zIndex=index===0?'10':'6';
-      if(index===0){
-        // The top-left date heading stays pinned both vertically and horizontally.
-        th.style.left='0';
-        th.style.boxShadow='2px 0 3px rgba(0,0,0,.25)';
-      }
+      th.style.height='42px';
+      if(index===0){th.style.position='sticky';th.style.left='0';th.style.zIndex='5';th.style.boxShadow='2px 0 3px rgba(0,0,0,.25)';}
       hr.appendChild(th);
     });
     head.appendChild(hr);
@@ -963,6 +956,18 @@
         td.appendChild(button);tr.appendChild(td);
       });
       body.appendChild(tr);
+    }
+    // Separate sticky header from the vertically scrolling rows, then mirror horizontal scroll.
+    const headerScroller=$('affiliate-grid-sticky-head'), bodyScroller=$('affiliate-grid-scroll');
+    if(headerScroller && bodyScroller && !headerScroller.dataset.syncReady){
+      let syncing=false;
+      headerScroller.addEventListener('scroll',()=>{
+        if(syncing) return; syncing=true; bodyScroller.scrollLeft=headerScroller.scrollLeft; syncing=false;
+      },{passive:true});
+      bodyScroller.addEventListener('scroll',()=>{
+        if(syncing) return; syncing=true; headerScroller.scrollLeft=bodyScroller.scrollLeft; syncing=false;
+      },{passive:true});
+      headerScroller.dataset.syncReady='1';
     }
   }
   window.renderAffiliateSchedule=renderAffiliateSchedule;
