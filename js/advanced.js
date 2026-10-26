@@ -399,6 +399,21 @@
         cell.append(l,v); metricRow.appendChild(cell);
       });
       metrics.appendChild(metricRow);
+      const detail=document.createElement('div'); detail.className='mt-2 grid grid-cols-1 gap-1 text-[9px] leading-snug text-slate-400';
+      const period=document.createElement('div');
+      const ps=p.trendPeriod&&p.trendPeriod.start, pe=p.trendPeriod&&p.trendPeriod.end;
+      period.textContent='Periode 7 hari: '+(ps||pe ? (ps||'?')+' sampai '+(pe||'?') : 'belum terbaca dari screenshot');
+      detail.appendChild(period);
+      const changes=p.trendChanges||{};
+      const changeLabel=(key,label,suffix='')=>{const v=changes[key]; if(v===null||v===undefined||v==='')return label+': perubahan belum terbaca'; const n=Number(v); return label+': '+(n>0?'↑ +':n<0?'↓ ':'')+n.toLocaleString('id-ID')+suffix;};
+      ['orders','ctr','creators','cart'].forEach(key=>{if(changes[key]!==undefined&&changes[key]!==null) {const row=document.createElement('div');row.textContent=changeLabel(key,{orders:'Perubahan pesanan',ctr:'Perubahan CTR',creators:'Perubahan kreator',cart:'Perubahan Add to Cart'}[key],key==='ctr'?' poin %':'');detail.appendChild(row);}});
+      const commission=p.commission||{};
+      if(commission.percent!=null||commission.amountRupiah!=null||commission.totalRupiah!=null){
+        const c=document.createElement('div'); c.className='mt-1 border-t border-slate-800 pt-1 text-slate-300';
+        c.textContent='Komisi: '+(commission.percent!=null?commission.percent+'%':'—')+' · per penjualan '+(commission.amountRupiah!=null?'Rp'+Number(commission.amountRupiah).toLocaleString('id-ID'):'—')+' · total '+(commission.totalRupiah!=null?'Rp'+Number(commission.totalRupiah).toLocaleString('id-ID'):'—');
+        detail.appendChild(c);
+      }
+      metrics.appendChild(detail);
       card.append(metrics);
       cards.appendChild(card);
     });
