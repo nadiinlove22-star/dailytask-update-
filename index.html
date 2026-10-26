@@ -237,6 +237,9 @@
                           <label class="text-xs text-slate-300" for="product-editor-period-start">Periode mulai<input id="product-editor-period-start" type="date" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-xs text-white"></label>
                           <label class="text-xs text-slate-300" for="product-editor-period-end">Periode akhir<input id="product-editor-period-end" type="date" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-xs text-white"></label>
                         </div>
+                        <label class="mt-3 block text-xs text-slate-300" for="product-editor-commission-percent">Komisi (%)</label><input id="product-editor-commission-percent" type="number" min="0" max="100" step="0.01" placeholder="Jika terlihat di screenshot" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
+                        <label class="mt-2 block text-xs text-slate-300" for="product-editor-commission-amount">Komisi per penjualan (Rp)</label><input id="product-editor-commission-amount" type="number" min="0" step="1" placeholder="Jika terlihat di screenshot" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
+                        <label class="mt-2 block text-xs text-slate-300" for="product-editor-commission-total">Total komisi (Rp)</label><input id="product-editor-commission-total" type="number" min="0" step="1" placeholder="Jika terlihat di screenshot" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
                         <input id="product-editor-trend-changes" type="hidden" value="{}">
                     </div>
                     <p id="product-editor-error" class="hidden text-xs text-rose-400"></p>
