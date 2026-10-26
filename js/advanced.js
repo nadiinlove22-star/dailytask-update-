@@ -894,6 +894,31 @@
     if(!progressData.__affiliateGridDone||typeof progressData.__affiliateGridDone!=='object') progressData.__affiliateGridDone={};
     return progressData.__affiliateGridDone;
   }
+  function showAffiliateProductTimes(dateKey, productCode) {
+    const title=$('affiliate-product-detail-title'), timesHost=$('affiliate-product-detail-times');
+    if(!title||!timesHost) return;
+    const parts=dateKey.split('-').map(Number);
+    const d=new Date(parts[0],parts[1]-1,parts[2],12,0,0,0);
+    const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    title.textContent='Produk '+productCode+' · '+dayNames[d.getDay()]+', '+affiliateGridDateLabel(d);
+    timesHost.innerHTML='';
+    const shift=Math.round((d.getDate()-affiliateGridStartDate().getDate()+30)%5);
+    const matching=[];
+    affiliateGridBase.forEach((baseCode,slot)=>{
+      const code=String.fromCharCode((baseCode.charCodeAt(0)-65+shift)%5+65);
+      if(code===productCode) matching.push(affiliateGridTimes[slot]);
+    });
+    if(!matching.length){
+      const empty=document.createElement('span');empty.className='text-xs text-slate-400';empty.textContent='Tidak ada slot untuk produk ini.';timesHost.appendChild(empty);return;
+    }
+    matching.forEach(time=>{
+      const chip=document.createElement('span');
+      chip.className='rounded-md border border-emerald-700 bg-emerald-900/50 px-3 py-2 text-sm font-bold text-emerald-200';
+      chip.textContent=time;
+      timesHost.appendChild(chip);
+    });
+  }
+
   function renderAffiliateSchedule() {
     const head=$('affiliate-grid-head'), body=$('affiliate-grid-body');
     if(!head||!body) return;
@@ -944,13 +969,15 @@
         button.className='flex min-h-[42px] w-full min-w-[58px] items-center justify-center px-2 font-bold transition-colors';
         button.style.color=isDone?'#ffffff':'#b7d8c1';button.style.background=isDone?'#059669':'transparent';
         button.addEventListener('click',async()=>{
+          // Show all upload times for this product on the selected date, and toggle upload status.
+          showAffiliateProductTimes(key,product);
           const state=affiliateGridDoneData();
           if(state[itemKey]===true) delete state[itemKey]; else state[itemKey]=true;
           const checked=state[itemKey]===true;
           button.textContent=checked?'✓ '+product:product;
           button.setAttribute('aria-pressed',checked?'true':'false');
           button.style.color=checked?'#ffffff':'#b7d8c1';button.style.background=checked?'#059669':'transparent';
-          button.title=(checked?'Sudah upload':'Belum upload')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk mengubah status';
+          button.title=(checked?'Sudah upload':'Belum upload')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk melihat jadwal dan mengubah status';
           if(typeof saveData==='function') await saveData();
         });
         td.appendChild(button);tr.appendChild(td);
