@@ -875,111 +875,102 @@
   window.renderAnalysisTab = renderAnalysisTab;
 
 
-  // Affiliate upload planner lives inside the existing Analitik tab.
-  function affiliateDateKey() {
-    const input = $('affiliate-schedule-date');
-    if (input && input.value) return input.value;
-    return typeof todayKey === 'function' ? todayKey() : new Date().toISOString().slice(0,10);
+  // Affiliate 30-day grid replaces the former Analitik dashboard.
+  const affiliateGridTimes = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+  const affiliateGridBase = ['A','B','C','D','E','B','C','D','E','A','C','D','E','A','B'];
+  function affiliateGridStartDate() {
+    const d = new Date();
+    d.setHours(12,0,0,0);
+    d.setDate(d.getDate()+1);
+    return d;
   }
-  function affiliateProducts() {
-    return typeof getAnalysisProducts === 'function' ? getAnalysisProducts() : [];
-  }
-  function affiliateSchedules() {
-    if (!progressData || typeof progressData !== 'object') return {};
-    if (!progressData.__affiliateSchedules || typeof progressData.__affiliateSchedules !== 'object') progressData.__affiliateSchedules = {};
-    return progressData.__affiliateSchedules;
-  }
-  function affiliateScheduleForDate() {
-    const key = affiliateDateKey();
-    const all = affiliateSchedules();
-    if (!all[key] || !Array.isArray(all[key].slots)) {
-      all[key] = { productIds: ['', '', '', ''], slots: Array.from({length:16}, (_,i)=>({time: String(i+6).padStart(2,'0')+':00', productIndex: i%4, done:false, angle:['Masalah → solusi','Demo cara pakai','Manfaat/keunggulan','Bukti atau perbandingan'][i%4]})) };
+  function affiliateGridProductNames() {
+    if (typeof progressData === 'undefined' || !progressData || typeof progressData !== 'object') return {A:'',B:'',C:'',D:'',E:''};
+    if (!progressData.__affiliateGridProducts || typeof progressData.__affiliateGridProducts !== 'object') {
+      progressData.__affiliateGridProducts = {A:'',B:'',C:'',D:'',E:''};
     }
-    if (!Array.isArray(all[key].productIds)) all[key].productIds = ['', '', '', ''];
-    if (!Array.isArray(all[key].slots) || all[key].slots.length !== 16) {
-      all[key].slots = Array.from({length:16}, (_,i)=>({time:String(i+6).padStart(2,'0')+':00',productIndex:i%4,done:false,angle:['Masalah → solusi','Demo cara pakai','Manfaat/keunggulan','Bukti atau perbandingan'][i%4]}));
-    }
-    return all[key];
+    const p=progressData.__affiliateGridProducts;
+    ['A','B','C','D','E'].forEach(k=>{ if(typeof p[k] !== 'string') p[k]=''; });
+    return p;
+  }
+  function affiliateGridDateLabel(d) {
+    return d.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
   }
   function renderAffiliateSchedule() {
-    const dateInput = $('affiliate-schedule-date');
-    if (dateInput && !dateInput.value) dateInput.value = affiliateDateKey();
-    const products = affiliateProducts();
-    const schedule = affiliateScheduleForDate();
-    const picks = $('affiliate-product-picks');
-    if (picks) {
-      picks.innerHTML = '';
-      for (let i=0;i<4;i++) {
-        const wrap = document.createElement('div');
-        wrap.className = 'flex flex-col gap-1';
-        const label = document.createElement('label');
-        label.className = 'text-[10px] font-semibold text-slate-300';
-        label.textContent = 'Produk '+String.fromCharCode(65+i)+' · jam '+(6+i)+':00, '+(10+i)+':00, '+(14+i)+':00, '+(18+i)+':00';
-        const select = document.createElement('select');
-        select.id = 'affiliate-product-pick-'+i;
-        select.className = 'w-full rounded-lg border border-slate-700 px-2 py-2 text-xs text-white';
-        const empty = document.createElement('option'); empty.value=''; empty.textContent= products.length ? 'Pilih produk…' : 'Tambahkan produk di tab Analisa dahulu'; select.appendChild(empty);
-        products.forEach(p=>{
-          const option=document.createElement('option');
-          option.value=String(p.id);
-          option.textContent=String(p.name||'Produk tanpa nama')+(p.trend && p.trend.orders!==null && p.trend.orders!==undefined && p.trend.orders!=='' ? ' · '+p.trend.orders+' pesanan/7 hari' : ' · data pesanan belum diinput');
-          select.appendChild(option);
-        });
-        select.value=String(schedule.productIds[i]||'');
-        wrap.append(label,select); picks.appendChild(wrap);
-      }
-    }
-    const list=$('affiliate-schedule-list');
-    if (list) {
-      list.innerHTML='';
-      let done=0;
-      schedule.slots.forEach((slot,i)=>{
-        // Interleave the four selected products throughout the day (A, B, C, D, repeat), including previously saved schedules.
-        slot.productIndex = i % 4;
-        const product=products.find(p=>String(p.id)===String(schedule.productIds[slot.productIndex]||''));
-        if(slot.done) done++;
-        const card=document.createElement('div');
-        card.className='rounded-xl border border-slate-800 bg-slate-950/40 p-2.5';
-        const row=document.createElement('div'); row.className='flex items-start gap-2.5';
-        const time=document.createElement('div'); time.className='shrink-0 rounded-lg bg-slate-800 px-2 py-2 text-xs font-bold text-white'; time.textContent=slot.time;
-        const body=document.createElement('div'); body.className='min-w-0 flex-1';
-        const name=document.createElement('p'); name.className='break-words text-xs font-semibold '+(product?'text-slate-100':'text-amber-300'); name.textContent=product?(product.name||'Produk tanpa nama'):'Pilih Produk '+String.fromCharCode(65+slot.productIndex);
-        const meta=document.createElement('p'); meta.className='mt-1 text-[10px] text-slate-400'; meta.textContent='Video '+(i+1)+' · '+slot.angle;
-        const status=document.createElement('label'); status.className='flex shrink-0 items-center gap-1 text-[10px] text-slate-300';
-        const check=document.createElement('input'); check.type='checkbox'; check.checked=!!slot.done; check.className='h-4 w-4 accent-emerald-500';
-        check.addEventListener('change',async()=>{slot.done=check.checked;await persistAffiliateSchedule();renderAffiliateSchedule();});
-        status.append(check,document.createTextNode('Upload'));
-        body.append(name,meta);
-        if(product && product.url) {
-          const link=document.createElement('a'); link.href=product.url; link.target='_blank'; link.rel='noopener noreferrer'; link.className='mt-1 inline-block text-[10px] text-emerald-300 underline'; link.textContent='Buka link produk'; body.appendChild(link);
-        }
-        row.append(time,body,status); card.appendChild(row); list.appendChild(card);
+    const names=affiliateGridProductNames();
+    const nameHost=$('affiliate-grid-product-names');
+    if(nameHost) {
+      nameHost.innerHTML='';
+      ['A','B','C','D','E'].forEach(code=>{
+        const label=document.createElement('label');
+        label.className='flex items-center gap-2 text-[11px] text-slate-300';
+        const badge=document.createElement('span');
+        badge.className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 font-bold text-emerald-300';
+        badge.textContent=code;
+        const input=document.createElement('input');
+        input.id='affiliate-grid-name-'+code;
+        input.type='text';
+        input.maxLength=80;
+        input.placeholder='Nama produk '+code;
+        input.value=names[code]||'';
+        input.className='min-w-0 flex-1 rounded-lg border border-slate-700 px-3 py-2 text-xs text-white';
+        label.append(badge,input);
+        nameHost.appendChild(label);
       });
-      const label=$('affiliate-progress-label'); if(label) label.textContent=done+'/16';
-      const bar=$('affiliate-progress-bar'); if(bar) bar.style.width=(done/16*100)+'%';
     }
-    const feedback=$('affiliate-schedule-feedback');
-    if(feedback && !products.length) feedback.textContent='Belum ada produk tersimpan. Tambahkan produk di tab Analisa dahulu; data yang sudah ada tidak dihapus.';
-  }
-  async function persistAffiliateSchedule() {
-    if (typeof saveData==='function') await saveData();
-  }
-  async function saveAffiliateProductPicks() {
-    const schedule=affiliateScheduleForDate();
-    const picks=[0,1,2,3].map(i=>{const el=$('affiliate-product-pick-'+i);return el?el.value:'';});
-    const chosen=picks.filter(Boolean);
-    if (new Set(chosen).size!==chosen.length) {
-      const feedback=$('affiliate-schedule-feedback'); if(feedback) feedback.textContent='Pilih empat produk yang berbeda agar rotasinya tidak terduplikasi.';
-      return;
+    const head=$('affiliate-grid-head'), body=$('affiliate-grid-body');
+    if(!head||!body) return;
+    head.innerHTML=''; body.innerHTML='';
+    const hr=document.createElement('tr');
+    ['Tanggal',...affiliateGridTimes].forEach((label,index)=>{
+      const th=document.createElement('th');
+      th.textContent=label;
+      th.className='sticky top-0 border border-slate-700 px-2 py-3 font-bold text-white';
+      th.style.background='#244d35';
+      th.style.minWidth=index===0?'92px':'58px';
+      hr.appendChild(th);
+    });
+    head.appendChild(hr);
+    const start=affiliateGridStartDate();
+    const end=new Date(start); end.setDate(end.getDate()+29);
+    const range=$('affiliate-grid-range');
+    if(range) range.textContent=affiliateGridDateLabel(start)+' – '+affiliateGridDateLabel(end);
+    const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    for(let day=0;day<30;day++) {
+      const d=new Date(start); d.setDate(start.getDate()+day);
+      const tr=document.createElement('tr');
+      const dateCell=document.createElement('th');
+      dateCell.className='border border-slate-800 px-2 py-2 text-left font-semibold text-slate-200';
+      dateCell.style.background=day%2?'#202722':'#191f1b';
+      dateCell.textContent=dayNames[d.getDay()]+' '+affiliateGridDateLabel(d);
+      tr.appendChild(dateCell);
+      const shift=day%5;
+      affiliateGridBase.forEach(code=>{
+        const rotated=String.fromCharCode((code.charCodeAt(0)-65+shift)%5+65);
+        const td=document.createElement('td');
+        td.className='border border-slate-800 px-2 py-2 font-bold';
+        td.style.background=day%2?'#18231c':'#111713';
+        td.style.color=names[rotated]?'#d9f5df':'#8fc6a1';
+        td.textContent=rotated;
+        td.title=rotated+(names[rotated]?' · '+names[rotated]:'');
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
     }
-    schedule.productIds=picks;
-    await persistAffiliateSchedule();
+  }
+  async function saveAffiliateGridProducts() {
+    const names=affiliateGridProductNames();
+    ['A','B','C','D','E'].forEach(code=>{
+      const input=$('affiliate-grid-name-'+code);
+      if(input) names[code]=input.value.trim().slice(0,80);
+    });
+    if(typeof saveData==='function') await saveData();
     renderAffiliateSchedule();
-    const feedback=$('affiliate-schedule-feedback');
-    if(feedback) feedback.textContent='Pilihan tersimpan. Jadwal 06.00–21.00 sudah dibuat; centang setiap slot setelah upload.';
+    const feedback=$('affiliate-grid-feedback');
+    if(feedback) feedback.textContent='Nama produk berhasil disimpan di data aplikasi.';
   }
   window.renderAffiliateSchedule=renderAffiliateSchedule;
-  window.saveAffiliateProductPicks=saveAffiliateProductPicks;
+  window.saveAffiliateGridProducts=saveAffiliateGridProducts;
 
   // Notes are stored alongside progress data so they sync through the existing cloud save and backup.
   function getNotes() {
