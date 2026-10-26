@@ -902,7 +902,7 @@
     const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
     title.textContent='Produk '+productCode+' · '+dayNames[d.getDay()]+', '+affiliateGridDateLabel(d);
     timesHost.innerHTML='';
-    const shift=Math.round((d.getDate()-affiliateGridStartDate().getDate()+30)%5);
+    const shift=Math.floor((d.getTime()-affiliateGridStartDate().getTime())/86400000)%5;
     const matching=[];
     affiliateGridBase.forEach((baseCode,slot)=>{
       const code=String.fromCharCode((baseCode.charCodeAt(0)-65+shift)%5+65);
