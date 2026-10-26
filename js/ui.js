@@ -1041,7 +1041,7 @@ function switchTab(tabName) {
     }
 
     if (tabName === 'stats') {
-        renderStatsTab();
+        if (typeof renderAffiliateSchedule === 'function') renderAffiliateSchedule();
     }
 }
 
