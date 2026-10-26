@@ -292,6 +292,9 @@
     $('product-editor-ctr').value = trend.ctr ?? '';
     $('product-editor-creators').value = trend.creators ?? '';
     $('product-editor-cart').value = trend.cart ?? '';
+    $('product-editor-commission-percent').value = product && product.commission && product.commission.percent != null ? product.commission.percent : '';
+    $('product-editor-commission-amount').value = product && product.commission && product.commission.amountRupiah != null ? product.commission.amountRupiah : '';
+    $('product-editor-commission-total').value = product && product.commission && product.commission.totalRupiah != null ? product.commission.totalRupiah : '';
     $('product-editor-period-start').value = product && product.trendPeriod && product.trendPeriod.start || '';
     $('product-editor-period-end').value = product && product.trendPeriod && product.trendPeriod.end || '';
     $('product-editor-trend-changes').value = JSON.stringify(product && product.trendChanges || {});
