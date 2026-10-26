@@ -241,38 +241,28 @@
         </div>
 
         <!-- TAB 4: JADWAL AFFILIATE 30 HARI -->
-        <div id="tab-stats" class="tab-page hidden flex flex-col gap-3">
-            <section class="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
-                <h2 class="text-base font-bold text-white">Jadwal Upload 30 Hari</h2>
-                <p class="mt-1 text-[11px] text-slate-400">Satu baris untuk satu tanggal. Jam berada di judul kolom; huruf di bawahnya menunjukkan produk yang diunggah. Geser tabel ke samping untuk melihat jam berikutnya.</p>
-                <div class="mt-3 flex items-center justify-between gap-2">
-                    <span id="affiliate-grid-range" class="text-[10px] text-slate-400">30 hari</span>
-                    <button type="button" onclick="renderAffiliateSchedule()" class="rounded-lg bg-slate-800 px-3 py-2 text-[10px] font-semibold text-slate-200">Perbarui jadwal</button>
-                </div>
-            </section>
-            <section class="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-                <h3 class="text-xs font-bold text-white">Nama Produk A–E</h3>
-                <p class="mt-1 text-[10px] text-slate-400">Isi nama agar kode A–E mudah dikenali. Nama disimpan pada data aplikasi.</p>
-                <div id="affiliate-grid-product-names" class="mt-3 grid grid-cols-1 gap-2"></div>
-                <button type="button" onclick="saveAffiliateGridProducts()" class="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white">Simpan Nama Produk</button>
-                <p id="affiliate-grid-feedback" class="mt-2 text-[10px] text-slate-400" aria-live="polite"></p>
-            </section>
+        <div id="tab-stats" class="tab-page hidden flex flex-col gap-2">
             <section class="rounded-xl border border-slate-800 bg-slate-900/80 p-2">
                 <div class="mb-2 flex items-center justify-between gap-2 px-1">
-                    <h3 class="text-xs font-bold text-white">Jadwal harian</h3>
-                    <span class="text-[10px] text-slate-500">15 video/hari</span>
+                    <h2 class="text-sm font-bold text-white">Jadwal Upload</h2>
+                    <span id="affiliate-grid-range" class="text-[10px] text-slate-400">30 hari</span>
                 </div>
-                <div class="w-full overflow-x-auto rounded-lg border border-slate-800" style="overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch">
-                    <table id="affiliate-grid-table" class="border-collapse text-center text-[10px]" style="min-width:900px;width:100%">
+                <div class="mb-2 flex flex-wrap items-center gap-3 px-1 text-[10px] text-slate-400">
+                    <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500"></span>Sudah upload</span>
+                    <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-slate-800"></span>Belum upload</span>
+                    <span class="text-emerald-300">Ketuk kode produk untuk menandai upload</span>
+                </div>
+                <div class="w-full overflow-x-auto rounded-lg border border-slate-800" style="overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;position:relative">
+                    <table id="affiliate-grid-table" class="border-collapse text-center text-[10px]" style="min-width:960px;width:max-content">
                         <thead id="affiliate-grid-head"></thead>
                         <tbody id="affiliate-grid-body"></tbody>
                     </table>
                 </div>
-                <p class="mt-2 px-1 text-[10px] text-slate-500">Geser tabel ke kiri atau kanan untuk melihat semua jam. Jadwal dimulai besok dan mencakup 30 hari.</p>
+                <p class="mt-2 px-1 text-[10px] text-slate-500">Geser ke kiri/kanan untuk melihat semua jam. Kolom tanggal tetap menempel di kiri. Jadwal hari ini diberi sorotan khusus.</p>
             </section>
         </div>
 
-        <!-- TAB 5: PENGATURAN -->
+<!-- TAB 5: PENGATURAN -->
         <div id="tab-settings" class="tab-page hidden flex flex-col gap-3">
             <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5">
                 <h2 class="text-xs font-bold text-white">Akun & Cloud Supabase</h2>
@@ -402,9 +392,9 @@
     <!-- Urutan Import Harus Sesuai Dependensi -->
 <script src="js/config.js?v=20261017-46"></script>
 <script src="js/storage.js?v=20261017-46"></script>
-<script src="js/ui.js?v=20261027-49"></script>
-<script src="js/advanced.js?v=20261027-49"></script>
-<script src="js/app.js?v=20261027-49"></script>
+<script src="js/ui.js?v=20261027-50"></script>
+<script src="js/advanced.js?v=20261027-50"></script>
+<script src="js/app.js?v=20261027-50"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
