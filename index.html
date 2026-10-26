@@ -233,6 +233,11 @@
                         <label class="mt-2 block text-xs text-slate-300" for="product-editor-ctr">CTR (%)</label><input id="product-editor-ctr" type="number" min="0" max="100" step="0.01" placeholder="Belum diinput" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
                         <label class="mt-2 block text-xs text-slate-300" for="product-editor-creators">Jumlah kreator</label><input id="product-editor-creators" type="number" min="0" step="1" placeholder="Belum diinput" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
                         <label class="mt-2 block text-xs text-slate-300" for="product-editor-cart">Add to cart</label><input id="product-editor-cart" type="number" min="0" step="1" placeholder="Belum diinput" class="mt-1 w-full rounded-lg border border-slate-700 px-3 py-2 text-sm text-white">
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+                          <label class="text-xs text-slate-300" for="product-editor-period-start">Periode mulai<input id="product-editor-period-start" type="date" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-xs text-white"></label>
+                          <label class="text-xs text-slate-300" for="product-editor-period-end">Periode akhir<input id="product-editor-period-end" type="date" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-xs text-white"></label>
+                        </div>
+                        <input id="product-editor-trend-changes" type="hidden" value="{}">
                     </div>
                     <p id="product-editor-error" class="hidden text-xs text-rose-400"></p>
                     <div class="flex gap-2"><button type="button" onclick="closeProductEditor()" class="flex-1 rounded-lg bg-slate-800 py-2.5 text-sm text-slate-300">Batal</button><button type="submit" class="flex-1 rounded-lg bg-emerald-600 py-2.5 text-sm font-bold text-white">Simpan</button></div>
@@ -401,9 +406,9 @@
     <!-- Urutan Import Harus Sesuai Dependensi -->
 <script src="js/config.js?v=20261017-46"></script>
 <script src="js/storage.js?v=20261017-46"></script>
-<script src="js/ui.js?v=20261027-56"></script>
-<script src="js/advanced.js?v=20261027-56"></script>
-<script src="js/app.js?v=20261027-56"></script>
+<script src="js/ui.js?v=20261027-57"></script>
+<script src="js/advanced.js?v=20261027-57"></script>
+<script src="js/app.js?v=20261027-57"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
