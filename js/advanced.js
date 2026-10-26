@@ -328,6 +328,8 @@
     const periodStart = $('product-editor-period-start')?.value || '';
     const periodEnd = $('product-editor-period-end')?.value || '';
     item.trendPeriod = periodStart || periodEnd ? { start: periodStart || null, end: periodEnd || null } : (item.trendPeriod || null);
+    const commission = { percent:$('product-editor-commission-percent')?.value.trim() || null, amountRupiah:$('product-editor-commission-amount')?.value.trim() || null, totalRupiah:$('product-editor-commission-total')?.value.trim() || null };
+    item.commission = Object.fromEntries(Object.entries(commission).map(([k,v])=>[k,v === null ? null : Number(v)]));
     try {
       const changes = JSON.parse($('product-editor-trend-changes')?.value || '{}');
       if (changes && typeof changes === 'object') item.trendChanges = changes;
