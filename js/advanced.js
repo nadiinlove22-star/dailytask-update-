@@ -789,6 +789,12 @@
       $('product-editor-ctr').value = data.ctr ?? '';
       $('product-editor-creators').value = data.creators ?? '';
       $('product-editor-cart').value = data.cart ?? '';
+      $('product-editor-period-start').value = data.periodStart || '';
+      $('product-editor-period-end').value = data.periodEnd || '';
+      $('product-editor-trend-changes').value = JSON.stringify(data.changes || {});
+      $('product-editor-commission-percent').value = data.commissionPercent ?? '';
+      $('product-editor-commission-amount').value = data.commissionAmountRupiah ?? '';
+      $('product-editor-commission-total').value = data.commissionTotalRupiah ?? '';
       const missing = [
         (data.name || data.fullName || pastedTitle) ? '' : 'nama produk',
         data.orders == null ? 'Pesanan' : '',
