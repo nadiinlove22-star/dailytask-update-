@@ -1180,7 +1180,7 @@
   function init() {
     if (initialized) return;
     initialized = true;
-    ensureDashboard();
+    // The old productivity dashboard is intentionally disabled; Analitik is now the Affiliate upload planner.
     addTaskFields('new');
     addTaskFields('edit');
     enhanceSaveFunctions();
