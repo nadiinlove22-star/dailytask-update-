@@ -932,7 +932,21 @@
     const products=['A','B','C','D','E'].slice(0,settings.productsPerDay);
     const videosPerProduct=Math.max(1,Math.min(5,settings.videosPerDay));
     const totalVideos=Math.min(15,products.length*videosPerProduct);
-    affiliateGridBase=products.flatMap(code=>Array.from({length:videosPerProduct},()=>code)).slice(0,totalVideos);
+    const sequence=[];
+    if(settings.orderMode==='alternating'){
+      for(let round=0;round<videosPerProduct;round++){
+        let row=products.slice();
+        if(round%2===1){
+          for(let i=0;i+1<row.length;i+=2){const temp=row[i];row[i]=row[i+1];row[i+1]=temp;}
+        } else if(round>0 && row.length>2){
+          row=row.slice(round%row.length).concat(row.slice(0,round%row.length));
+        }
+        sequence.push(...row);
+      }
+    } else {
+      sequence.push(...products.flatMap(code=>Array.from({length:videosPerProduct},()=>code)));
+    }
+    affiliateGridBase=sequence.slice(0,totalVideos);
     affiliateGridTimes=Array.from({length:totalVideos},(_,i)=>{
       const minutes=totalVideos===1?7*60:7*60+Math.round((14*60*i)/(totalVideos-1));
       return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
@@ -945,7 +959,8 @@
     const maxVideosPerProduct=Math.max(1,Math.min(5,Math.floor(15/productsPerDay)));
     const videosPerDay=Math.max(1,Math.min(maxVideosPerProduct,Number(videosInput.value)||1));
     if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return;
-    progressData.__affiliateScheduleSettings={productsPerDay,videosPerDay};
+    const modeInput=$('affiliate-settings-order');
+    progressData.__affiliateScheduleSettings={productsPerDay,videosPerDay,orderMode:modeInput&&modeInput.value==='alternating'?'alternating':'grouped'};
     configureAffiliateSchedule();
     if(typeof saveData==='function') await saveData();
     renderAffiliateSchedule();
@@ -962,7 +977,7 @@
     panel.id='affiliate-schedule-settings';
     panel.className='fixed bottom-40 right-4 z-50 w-[min(340px,calc(100vw-2rem))] rounded-2xl border border-slate-700 bg-slate-950 p-4 shadow-2xl';
     panel.style.display='none';
-    panel.innerHTML='<div class="mb-3 flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-100">Pengaturan jadwal 30 hari</p><button id="affiliate-settings-close" type="button" class="rounded-lg px-2 py-1 text-lg text-slate-300" aria-label="Tutup pengaturan">×</button></div><div class="grid grid-cols-2 gap-2"><label class="text-xs text-slate-300">Produk per hari<select id="affiliate-settings-products" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 produk</option><option value="2">2 produk</option><option value="3">3 produk</option><option value="4">4 produk</option><option value="5">5 produk</option></select></label><label class="text-xs text-slate-300">Video per produk<select id="affiliate-settings-videos" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 video</option><option value="2">2 video</option><option value="3">3 video</option><option value="4">4 video</option><option value="5">5 video</option></select></label></div><p id="affiliate-settings-summary" class="mt-3 text-xs leading-relaxed text-emerald-300"></p><p class="mt-2 text-[10px] leading-relaxed text-slate-400">Jadwal dimulai pukul 07.00 dan membagi waktu sampai 21.00. Ini rencana/pengingat di aplikasi, bukan unggah atau jeda otomatis di TikTok/Shopee.</p><button id="affiliate-settings-save" type="button" class="mt-3 w-full rounded-xl bg-emerald-700 px-3 py-2.5 text-xs font-bold text-white">Simpan pengaturan</button>';
+    panel.innerHTML='<div class="mb-3 flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-100">Pengaturan jadwal 30 hari</p><button id="affiliate-settings-close" type="button" class="rounded-lg px-2 py-1 text-lg text-slate-300" aria-label="Tutup pengaturan">×</button></div><div class="mb-2"><label class="text-xs text-slate-300">Urutan produk<select id="affiliate-settings-order" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="alternating">Selang-seling (A-B-C-D, lalu bergantian)</option><option value="grouped">Berkelompok (AAAA-BBBB-CCCC)</option></select></label></div><div class="grid grid-cols-2 gap-2"><label class="text-xs text-slate-300">Produk per hari<select id="affiliate-settings-products" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 produk</option><option value="2">2 produk</option><option value="3">3 produk</option><option value="4">4 produk</option><option value="5">5 produk</option></select></label><label class="text-xs text-slate-300">Video per produk<select id="affiliate-settings-videos" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 video</option><option value="2">2 video</option><option value="3">3 video</option><option value="4">4 video</option><option value="5">5 video</option></select></label></div><p id="affiliate-settings-summary" class="mt-3 text-xs leading-relaxed text-emerald-300"></p><p class="mt-2 text-[10px] leading-relaxed text-slate-400">Jadwal dimulai pukul 07.00 dan membagi waktu sampai 21.00. Ini rencana/pengingat di aplikasi, bukan unggah atau jeda otomatis di TikTok/Shopee.</p><button id="affiliate-settings-save" type="button" class="mt-3 w-full rounded-xl bg-emerald-700 px-3 py-2.5 text-xs font-bold text-white">Simpan pengaturan</button>';
     document.body.append(launcher,panel);
     const settings=affiliateScheduleSettings();
     $('affiliate-settings-products').value=String(settings.productsPerDay);
@@ -979,6 +994,7 @@
     launcher.addEventListener('click',()=>{panel.style.display=panel.style.display==='none'?'block':'none';updateSummary();});
     $('affiliate-settings-close').addEventListener('click',()=>{panel.style.display='none';});
     $('affiliate-settings-products').addEventListener('change',updateSummary);
+    $('affiliate-settings-order').addEventListener('change',updateSummary);
     $('affiliate-settings-videos').addEventListener('change',updateSummary);
     $('affiliate-settings-save').addEventListener('click',saveAffiliateScheduleSettings);
     updateSummary();
@@ -1057,7 +1073,7 @@
       th.textContent=label;
       th.className='border border-slate-700 px-2 py-3 font-bold text-white';
       th.style.background='#244d35';
-      th.style.minWidth=index===0?'118px':'58px';
+      th.style.width=index===0?'88px':'58px';th.style.minWidth=index===0?'88px':'58px';th.style.maxWidth=index===0?'88px':'58px';
       th.style.height='42px';
       if(index===0){th.style.position='sticky';th.style.left='0';th.style.zIndex='5';th.style.boxShadow='2px 0 3px rgba(0,0,0,.25)';}
       hr.appendChild(th);
@@ -1077,7 +1093,7 @@
       if(isToday) tr.style.outline='2px solid #34d399';
       const dateCell=document.createElement('th');
       dateCell.className='border border-slate-800 px-2 py-2 text-left font-semibold';
-      dateCell.style.position='sticky';dateCell.style.left='0';dateCell.style.zIndex='3';dateCell.style.minWidth='118px';dateCell.style.boxShadow='2px 0 3px rgba(0,0,0,.25)';
+      dateCell.style.position='sticky';dateCell.style.left='0';dateCell.style.zIndex='3';dateCell.style.width='88px';dateCell.style.minWidth='88px';dateCell.style.maxWidth='88px';dateCell.style.boxShadow='2px 0 3px rgba(0,0,0,.25)';
       dateCell.style.background=isToday?'#14532d':(day%2?'#202722':'#191f1b');
       dateCell.style.color=isToday?'#ffffff':'#e2e8f0';
       const dayLabel=document.createElement('div');
@@ -1210,7 +1226,7 @@
         makeMenuButton('🗑 Hapus', 'Hapus catatan', () => deleteNote(note.id), false)
       );
       more.append(summary, menu);
-      actions.append(copy, edit, deleteButton, more);
+      actions.append(edit, deleteButton, more, copy);
       card.append(icon, main, actions);
       host.appendChild(card);
     });
