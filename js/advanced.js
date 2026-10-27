@@ -406,7 +406,7 @@
       const detailToggle=document.createElement('button'); detailToggle.type='button'; detailToggle.className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 text-sm text-sky-300'; detailToggle.textContent='📈'; detailToggle.title='Lihat grafik dan detail data'; detailToggle.setAttribute('aria-label','Lihat grafik dan detail data');
       const metrics=document.createElement('div'); metrics.className='mt-2 min-w-0 hidden border-t border-slate-800 pt-2';
       detailToggle.addEventListener('click',()=>{const isHidden=metrics.classList.toggle('hidden');detailToggle.title=isHidden?'Lihat grafik dan detail data':'Tutup detail data';});
-      right.appendChild(detailToggle);
+      const scoreLine=document.createElement('div'); scoreLine.className='flex items-center justify-end gap-1'; scoreLine.append(score,detailToggle); right.prepend(scoreLine);
       const history=Array.isArray(p.history)?p.history:[];
       const chartTitle=document.createElement('div'); chartTitle.className='mb-1 text-[10px] font-semibold text-slate-300'; chartTitle.textContent='Grafik pesanan per input';
       metrics.appendChild(chartTitle);
