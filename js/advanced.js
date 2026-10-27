@@ -220,6 +220,8 @@
   }
   function hasMetric(value) { return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0; }
   function productScore(product) {
+    const aiScore = product && product.aiAnalysis && Number(product.aiAnalysis.score);
+    if (Number.isFinite(aiScore) && aiScore >= 0 && aiScore <= 100) return Math.round(aiScore);
     const t = product && product.trend || {};
     const hasCtr = hasMetric(t.ctr);
     const hasOrders = hasMetric(t.orders);
@@ -287,6 +289,7 @@
     $('product-editor-id').value = product ? product.id : '';
     $('product-editor-name').value = product ? product.name || '' : '';
     $('product-editor-url').value = product ? product.url || '' : '';
+    $('product-editor-price').value = product && product.priceRupiah != null ? product.priceRupiah : '';
     const trend = product && product.trend || {};
     $('product-editor-orders').value = trend.orders ?? '';
     $('product-editor-ctr').value = trend.ctr ?? '';
@@ -298,6 +301,7 @@
     $('product-editor-period-start').value = product && product.trendPeriod && product.trendPeriod.start || '';
     $('product-editor-period-end').value = product && product.trendPeriod && product.trendPeriod.end || '';
     $('product-editor-trend-changes').value = JSON.stringify(product && product.trendChanges || {});
+    $('product-editor-price').value = product && product.priceRupiah != null ? product.priceRupiah : '';
     $('product-editor-date').textContent = productDateLabel(product && product.updatedAt);
     $('product-editor-error').classList.add('hidden');
     modal.classList.remove('hidden'); modal.classList.add('flex');
@@ -313,6 +317,7 @@
     if (!name || !url) { err.textContent = 'Nama dan link produk yang valid wajib diisi.'; err.classList.remove('hidden'); return; }
     const old = getAnalysisProducts().find(p => String(p.id) === String($('product-editor-id').value));
     const raw = { orders:$('product-editor-orders').value, ctr:$('product-editor-ctr').value, creators:$('product-editor-creators').value, cart:$('product-editor-cart').value };
+    const priceRaw = $('product-editor-price')?.value.trim() || '';
     const hasNewMetrics = Object.values(raw).some(v => v.trim() !== '');
     const hasOldMetrics = old && old.trend && Object.values(old.trend).some(v => v !== null && v !== undefined && v !== '');
     const trend = {};
@@ -321,6 +326,9 @@
     const duplicateByUrl = !old ? list.find(p => safeProductUrl(p.url) === url) : null;
     const item = old || duplicateByUrl || { id: 'prod-' + Date.now() };
     item.name = name; item.url = url;
+    item.priceRupiah = priceRaw === '' ? (item.priceRupiah ?? null) : Number(priceRaw);
+    if (window.__pendingProductAiAnalysis) { item.aiAnalysis = window.__pendingProductAiAnalysis; window.__pendingProductAiAnalysis = null; }
+    else if (old && old.trend && JSON.stringify(old.trend) !== JSON.stringify(trend)) item.aiAnalysis = null;
     if (hasNewMetrics || !hasOldMetrics) {
       item.trend = trend;
       item.updatedAt = hasNewMetrics ? new Date().toISOString() : null;
@@ -335,6 +343,11 @@
       if (changes && typeof changes === 'object') item.trendChanges = changes;
     } catch (_) {}
     if (!old && !duplicateByUrl) list.push(item);
+    const snapshot = { at: new Date().toISOString(), trend: { ...item.trend }, priceRupiah: item.priceRupiah ?? null, commission: item.commission ? { ...item.commission } : null };
+    if (!Array.isArray(item.history)) item.history = [];
+    const lastSnapshot = item.history[item.history.length - 1];
+    if (!lastSnapshot || JSON.stringify(lastSnapshot.trend) !== JSON.stringify(snapshot.trend) || lastSnapshot.priceRupiah !== snapshot.priceRupiah || JSON.stringify(lastSnapshot.commission) !== JSON.stringify(snapshot.commission)) item.history.push(snapshot);
+    item.history = item.history.slice(-30);
     progressData.__analysisProducts = list;
     if (typeof saveData === 'function') {
       const ok = await saveData();
@@ -390,9 +403,26 @@
       const analysis=document.createElement('div'); analysis.className='whitespace-normal break-words text-[9px] leading-tight font-semibold '+status.color; analysis.textContent=status.label;
       const note=document.createElement('div'); note.className='whitespace-normal break-words text-[8px] leading-tight text-slate-500'; note.textContent=status.note;
       right.append(score,analysis,note); top.append(right); card.append(top);
-      const metrics=document.createElement('div'); metrics.className='mt-2 min-w-0';
-      const metricRow=document.createElement('div'); metricRow.className='grid grid-cols-4 gap-1 border-b border-slate-800 pb-1';
-      [['CTR',compactMetric(t.ctr,'ctr')],['Pesanan',compactMetric(t.orders,'orders')],['Jumlah Kreator',compactMetric(t.creators,'creators')],['Add to Cart',compactMetric(t.cart,'cart')]].forEach(([label,value])=>{
+      const detailToggle=document.createElement('button'); detailToggle.type='button'; detailToggle.className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-700 text-sm text-sky-300'; detailToggle.textContent='📈'; detailToggle.title='Lihat grafik dan detail data'; detailToggle.setAttribute('aria-label','Lihat grafik dan detail data');
+      const metrics=document.createElement('div'); metrics.className='mt-2 min-w-0 hidden border-t border-slate-800 pt-2';
+      detailToggle.addEventListener('click',()=>{const isHidden=metrics.classList.toggle('hidden');detailToggle.title=isHidden?'Lihat grafik dan detail data':'Tutup detail data';});
+      right.appendChild(detailToggle);
+      const history=Array.isArray(p.history)?p.history:[];
+      const chartTitle=document.createElement('div'); chartTitle.className='mb-1 text-[10px] font-semibold text-slate-300'; chartTitle.textContent='Grafik pesanan per input';
+      metrics.appendChild(chartTitle);
+      const chart=document.createElementNS('http://www.w3.org/2000/svg','svg'); chart.setAttribute('viewBox','0 0 300 76'); chart.setAttribute('width','100%'); chart.setAttribute('height','76'); chart.setAttribute('role','img'); chart.setAttribute('aria-label','Grafik perubahan pesanan');
+      const points=history.filter(s=>s&&s.trend&&hasMetric(s.trend.orders)).slice(-10);
+      if(points.length){
+        const max=Math.max(1,...points.map(s=>Number(s.trend.orders))), min=Math.min(...points.map(s=>Number(s.trend.orders)));
+        const coords=points.map((s,i)=>({x:points.length===1?150:10+i*280/(points.length-1),y:62-(Number(s.trend.orders)-min)/(max-min||1)*46,v:Number(s.trend.orders)}));
+        const axis=document.createElementNS(chart.namespaceURI,'path'); axis.setAttribute('d','M10 62 H290'); axis.setAttribute('stroke','#334155'); axis.setAttribute('stroke-width','1'); chart.appendChild(axis);
+        if(coords.length>1){const line=document.createElementNS(chart.namespaceURI,'polyline');line.setAttribute('points',coords.map(c=>c.x+','+c.y).join(' '));line.setAttribute('fill','none');line.setAttribute('stroke','#38bdf8');line.setAttribute('stroke-width','2.5');line.setAttribute('stroke-linecap','round');line.setAttribute('stroke-linejoin','round');chart.appendChild(line);}
+        coords.forEach(c=>{const dot=document.createElementNS(chart.namespaceURI,'circle');dot.setAttribute('cx',c.x);dot.setAttribute('cy',c.y);dot.setAttribute('r','3');dot.setAttribute('fill','#38bdf8');chart.appendChild(dot);});
+        const label=document.createElementNS(chart.namespaceURI,'text');label.setAttribute('x','10');label.setAttribute('y','11');label.setAttribute('fill','#cbd5e1');label.setAttribute('font-size','9');label.textContent='Pesanan: '+coords[coords.length-1].v.toLocaleString('id-ID');chart.appendChild(label);
+      } else { const empty=document.createElementNS(chart.namespaceURI,'text');empty.setAttribute('x','150');empty.setAttribute('y','42');empty.setAttribute('text-anchor','middle');empty.setAttribute('fill','#64748b');empty.setAttribute('font-size','10');empty.textContent='Grafik muncul setelah data disimpan';chart.appendChild(empty); }
+      metrics.appendChild(chart);
+      const metricRow=document.createElement('div'); metricRow.className='grid grid-cols-4 gap-1 border-y border-slate-800 py-2';
+      [['CTR',compactMetric(t.ctr,'ctr')],['Pesanan',compactMetric(t.orders,'orders')],['Kreator',compactMetric(t.creators,'creators')],['Keranjang',compactMetric(t.cart,'cart')]].forEach(([label,value])=>{
         const cell=document.createElement('div'); cell.className='min-w-0 text-center';
         const l=document.createElement('div'); l.className='whitespace-normal break-words text-[8px] leading-tight text-slate-500'; l.textContent=label;
         const v=document.createElement('div'); v.className='mt-1 whitespace-normal break-words text-[10px] leading-tight font-semibold text-slate-200'; v.textContent=value;
@@ -400,21 +430,21 @@
       });
       metrics.appendChild(metricRow);
       const detail=document.createElement('div'); detail.className='mt-2 grid grid-cols-1 gap-1 text-[9px] leading-snug text-slate-400';
-      const period=document.createElement('div');
+      const price=document.createElement('div'); price.textContent='Harga produk: '+(p.priceRupiah!=null?'Rp '+Number(p.priceRupiah).toLocaleString('id-ID'):'belum terbaca'); detail.appendChild(price);
       const ps=p.trendPeriod&&p.trendPeriod.start, pe=p.trendPeriod&&p.trendPeriod.end;
-      period.textContent='Periode 7 hari: '+(ps||pe ? (ps||'?')+' sampai '+(pe||'?') : 'belum terbaca dari screenshot');
-      detail.appendChild(period);
+      const period=document.createElement('div'); period.textContent='Periode 7 hari: '+(ps||pe ? (ps||'?')+' sampai '+(pe||'?') : 'belum terbaca dari screenshot'); detail.appendChild(period);
       const changes=p.trendChanges||{};
       const changeLabel=(key,label,suffix='')=>{const v=changes[key]; if(v===null||v===undefined||v==='')return label+': perubahan belum terbaca'; const n=Number(v); return label+': '+(n>0?'↑ +':n<0?'↓ ':'')+n.toLocaleString('id-ID')+suffix;};
       ['orders','ctr','creators','cart'].forEach(key=>{if(changes[key]!==undefined&&changes[key]!==null) {const row=document.createElement('div');row.textContent=changeLabel(key,{orders:'Perubahan pesanan',ctr:'Perubahan CTR',creators:'Perubahan kreator',cart:'Perubahan Add to Cart'}[key],key==='ctr'?' poin %':'');detail.appendChild(row);}});
       const commission=p.commission||{};
       if(commission.percent!=null||commission.amountRupiah!=null||commission.totalRupiah!=null){
         const c=document.createElement('div'); c.className='mt-1 border-t border-slate-800 pt-1 text-slate-300';
-        c.textContent='Komisi: '+(commission.percent!=null?commission.percent+'%':'—')+' · per penjualan '+(commission.amountRupiah!=null?'Rp'+Number(commission.amountRupiah).toLocaleString('id-ID'):'—')+' · total '+(commission.totalRupiah!=null?'Rp'+Number(commission.totalRupiah).toLocaleString('id-ID'):'—');
-        detail.appendChild(c);
+        c.textContent='Komisi: '+(commission.percent!=null?commission.percent+'%':'—')+' · per penjualan '+(commission.amountRupiah!=null?'Rp '+Number(commission.amountRupiah).toLocaleString('id-ID'):'—')+' · total '+(commission.totalRupiah!=null?'Rp '+Number(commission.totalRupiah).toLocaleString('id-ID'):'—'); detail.appendChild(c);
       }
-      metrics.appendChild(detail);
-      card.append(metrics);
+      const ai=p.aiAnalysis||{};
+      if(ai.summary){const s=document.createElement('div');s.className='mt-1 rounded-lg bg-slate-800/70 p-2 text-slate-300';s.textContent='Analisa AI: '+ai.summary;detail.appendChild(s);}
+      if(ai.recommendation){const r=document.createElement('div');r.className='text-sky-300';r.textContent='Saran: '+ai.recommendation;detail.appendChild(r);}
+      metrics.appendChild(detail); card.append(metrics);
       cards.appendChild(card);
     });
     host.appendChild(cards);
@@ -799,6 +829,7 @@
       if (existing) openProductEditor(existing.id);
       else { openProductEditor(); $('product-editor-id').value = ''; }
       $('product-editor-name').value = pastedTitle || String(data.name || data.fullName || '').trim();
+      $('product-editor-price').value = data.priceRupiah ?? '';
       $('product-editor-url').value = productUrl || '';
       $('product-editor-orders').value = data.orders ?? '';
       $('product-editor-ctr').value = data.ctr ?? '';
@@ -810,6 +841,7 @@
       $('product-editor-commission-percent').value = data.commissionPercent ?? '';
       $('product-editor-commission-amount').value = data.commissionAmountRupiah ?? '';
       $('product-editor-commission-total').value = data.commissionTotalRupiah ?? '';
+      window.__pendingProductAiAnalysis = data.aiAnalysis || null;
       const missing = [
         (data.name || data.fullName || pastedTitle) ? '' : 'nama produk',
         data.orders == null ? 'Pesanan' : '',
