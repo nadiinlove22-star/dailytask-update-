@@ -928,21 +928,29 @@
       orderMode:raw.orderMode==='alternating'?'alternating':'grouped'
     };
   }
-  function buildAffiliateDaySequence(dayIndex, previousLast) {
+  function buildAffiliateDaySequence(dayIndex, previousLast, previousSequence, olderSequence) {
     const settings=affiliateScheduleSettings();
     const products=['A','B','C','D','E'].slice(0,settings.productsPerDay);
     const videosPerProduct=Math.max(1,Math.min(5,settings.videosPerDay));
     const totalVideos=Math.min(15,products.length*videosPerProduct);
     if(settings.orderMode!=='alternating') return products.flatMap(code=>Array.from({length:videosPerProduct},()=>code)).slice(0,totalVideos);
-    const counts=products.map(()=>videosPerProduct), memo=new Set();
+    const counts=products.map(()=>videosPerProduct);
+    const targetGap=totalVideos/Math.max(1,videosPerProduct);
     const search=(remaining,last,path)=>{
       if(path.length===totalVideos) return last!==previousLast?path.slice():null;
-      const key=remaining.join('')+'|'+last+'|'+path.length;
-      if(memo.has(key)) return null;
-      memo.add(key);
       const order=products.map((code,index)=>({code,index,left:remaining[index]}))
         .filter(item=>item.left>0&&item.code!==last&&(path.length!==0||item.code!==previousLast))
-        .sort((a,b)=>b.left-a.left||((a.index-dayIndex-path.length+products.length*10)%products.length)-((b.index-dayIndex-path.length+products.length*10)%products.length));
+        .map(item=>{
+          const lastPos=path.lastIndexOf(item.code);
+          const gap=lastPos<0?targetGap:path.length-lastPos;
+          const spacingPenalty=lastPos<0?Math.abs(path.length-(item.index*targetGap/products.length)):Math.abs(gap-targetGap)*3;
+          const todaySlotPenalty=previousSequence&&previousSequence[path.length]===item.code?18:0;
+          const olderSlotPenalty=olderSequence&&olderSequence[path.length]===item.code?7:0;
+          const samePatternPenalty=previousSequence&&previousSequence[path.length-1]===item.code?30:0;
+          const rotation=(item.index-dayIndex-path.length+products.length*10)%Math.max(1,products.length);
+          return {...item,score:spacingPenalty+todaySlotPenalty+olderSlotPenalty+samePatternPenalty+rotation*0.01};
+        })
+        .sort((a,b)=>a.score-b.score||b.left-a.left);
       for(const item of order){
         remaining[item.index]--;
         const result=search(remaining,item.code,path.concat(item.code));
@@ -953,7 +961,7 @@
     };
     const found=search(counts,null,[]);
     if(found) return found;
-    // Some settings cannot satisfy every rule (e.g. one product with several videos).
+    // Keep the hard no-adjacent and cross-day rules for feasible configurations.
     const fallback=[];
     for(let round=0;round<videosPerProduct;round++){
       const offset=(dayIndex+round)%Math.max(1,products.length);
@@ -963,10 +971,14 @@
     return fallback.slice(0,totalVideos);
   }
   function affiliateSequenceForDay(dayIndex) {
-    let previousLast=null, sequence=[];
+    let previousLast=null, previousSequence=null, olderSequence=null, sequence=[];
     for(let day=0;day<=dayIndex;day++){
-      sequence=buildAffiliateDaySequence(day,previousLast);
-      if(sequence.length) previousLast=sequence[sequence.length-1];
+      sequence=buildAffiliateDaySequence(day,previousLast,previousSequence,olderSequence);
+      if(sequence.length) {
+        olderSequence=previousSequence;
+        previousSequence=sequence;
+        previousLast=sequence[sequence.length-1];
+      }
     }
     return sequence;
   }
