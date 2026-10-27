@@ -929,18 +929,20 @@
   }
   function configureAffiliateSchedule() {
     const settings=affiliateScheduleSettings();
-    affiliateGridTimes=Array.from({length:settings.videosPerDay},(_,i)=>{
-      const minutes=7*60+i*60;
+    const products=['A','B','C','D','E'].slice(0,settings.productsPerDay);
+    const videosPerProduct=Math.max(1,Math.min(5,settings.videosPerDay));
+    const totalVideos=Math.min(15,products.length*videosPerProduct);
+    affiliateGridBase=products.flatMap(code=>Array.from({length:videosPerProduct},()=>code)).slice(0,totalVideos);
+    affiliateGridTimes=Array.from({length:totalVideos},(_,i)=>{
+      const minutes=totalVideos===1?7*60:7*60+Math.round((14*60*i)/(totalVideos-1));
       return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
     });
-    const products=['A','B','C','D','E'].slice(0,settings.productsPerDay);
-    affiliateGridBase=Array.from({length:settings.videosPerDay},(_,i)=>products[i%products.length]);
   }
   async function saveAffiliateScheduleSettings() {
     const productsInput=$('affiliate-settings-products'), videosInput=$('affiliate-settings-videos');
     if(!productsInput||!videosInput) return;
     const productsPerDay=Math.max(1,Math.min(5,Number(productsInput.value)||1));
-    const videosPerDay=Math.max(1,Math.min(15,Number(videosInput.value)||1));
+    const videosPerDay=Math.max(1,Math.min(5,Number(videosInput.value)||1));
     if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return;
     progressData.__affiliateScheduleSettings={productsPerDay,videosPerDay};
     configureAffiliateSchedule();
@@ -951,16 +953,30 @@
     const range=$('affiliate-grid-range');
     const section=range&&range.closest('section');
     if(!section||$('affiliate-schedule-settings')) return;
+    const launcher=document.createElement('button');
+    launcher.id='affiliate-schedule-settings-launcher'; launcher.type='button';
+    launcher.className='fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-600 text-2xl text-white shadow-xl';
+    launcher.textContent='⚙'; launcher.title='Pengaturan jadwal'; launcher.setAttribute('aria-label','Buka pengaturan jadwal');
     const panel=document.createElement('div');
     panel.id='affiliate-schedule-settings';
-    panel.className='mb-3 rounded-xl border border-slate-700 bg-slate-950/50 p-3';
-    panel.innerHTML='<div class="mb-2 flex items-center justify-between gap-2"><p class="text-xs font-bold text-slate-100">Pengaturan jadwal 30 hari</p><span class="text-[10px] text-emerald-300">Mulai 07.00</span></div><div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-slate-300">Produk per hari<select id="affiliate-settings-products" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-sm"><option value="1">1 produk</option><option value="2">2 produk</option><option value="3">3 produk</option><option value="4">4 produk</option><option value="5">5 produk</option></select></label><label class="text-[11px] text-slate-300">Video per hari<select id="affiliate-settings-videos" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-sm"><option value="1">1 video</option><option value="2">2 video</option><option value="3">3 video</option><option value="4">4 video</option><option value="5">5 video</option><option value="6">6 video</option><option value="7">7 video</option><option value="8">8 video</option><option value="9">9 video</option><option value="10">10 video</option><option value="11">11 video</option><option value="12">12 video</option><option value="13">13 video</option><option value="14">14 video</option><option value="15">15 video</option></select></label></div><p class="mt-2 text-[10px] leading-relaxed text-slate-400">Jadwal membagi video per jam mulai pukul 07.00. Ini mengatur pengingat/rencana di aplikasi, bukan menjeda atau mengunggah otomatis ke TikTok/Shopee.</p><button id="affiliate-settings-save" type="button" class="mt-2 w-full rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">Simpan pengaturan</button>';
-    const legend=section.querySelector('.mb-2.flex.flex-wrap');
-    if(legend) section.insertBefore(panel,legend); else section.insertBefore(panel,section.children[1]||null);
+    panel.className='fixed bottom-40 right-4 z-50 w-[min(340px,calc(100vw-2rem))] rounded-2xl border border-slate-700 bg-slate-950 p-4 shadow-2xl';
+    panel.style.display='none';
+    panel.innerHTML='<div class="mb-3 flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-100">Pengaturan jadwal 30 hari</p><button id="affiliate-settings-close" type="button" class="rounded-lg px-2 py-1 text-lg text-slate-300" aria-label="Tutup pengaturan">×</button></div><div class="grid grid-cols-2 gap-2"><label class="text-xs text-slate-300">Produk per hari<select id="affiliate-settings-products" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 produk</option><option value="2">2 produk</option><option value="3">3 produk</option><option value="4">4 produk</option><option value="5">5 produk</option></select></label><label class="text-xs text-slate-300">Video per produk<select id="affiliate-settings-videos" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 video</option><option value="2">2 video</option><option value="3">3 video</option><option value="4">4 video</option><option value="5">5 video</option></select></label></div><p id="affiliate-settings-summary" class="mt-3 text-xs leading-relaxed text-emerald-300"></p><p class="mt-2 text-[10px] leading-relaxed text-slate-400">Jadwal dimulai pukul 07.00 dan membagi waktu sampai 21.00. Ini rencana/pengingat di aplikasi, bukan unggah atau jeda otomatis di TikTok/Shopee.</p><button id="affiliate-settings-save" type="button" class="mt-3 w-full rounded-xl bg-emerald-700 px-3 py-2.5 text-xs font-bold text-white">Simpan pengaturan</button>';
+    document.body.append(launcher,panel);
     const settings=affiliateScheduleSettings();
     $('affiliate-settings-products').value=String(settings.productsPerDay);
-    $('affiliate-settings-videos').value=String(settings.videosPerDay);
+    $('affiliate-settings-videos').value=String(Math.max(1,Math.min(5,settings.videosPerDay)));
+    const updateSummary=()=>{
+      const products=Number($('affiliate-settings-products').value)||1, videos=Number($('affiliate-settings-videos').value)||1;
+      const total=Math.min(15,products*videos);
+      $('affiliate-settings-summary').textContent='Total '+total+' video per hari ('+products+' produk × '+videos+' video per produk), maksimal 15 video. '+(total===15?'Jarak 1 jam.':total>=8?'Jarak sekitar 2 jam.':'Jarak lebih renggang sesuai jumlah video.');
+    };
+    launcher.addEventListener('click',()=>{panel.style.display=panel.style.display==='none'?'block':'none';updateSummary();});
+    $('affiliate-settings-close').addEventListener('click',()=>{panel.style.display='none';});
+    $('affiliate-settings-products').addEventListener('change',updateSummary);
+    $('affiliate-settings-videos').addEventListener('change',updateSummary);
     $('affiliate-settings-save').addEventListener('click',saveAffiliateScheduleSettings);
+    updateSummary();
   }
   function affiliateGridStartDate() {
     const d = new Date();
