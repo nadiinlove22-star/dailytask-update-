@@ -917,8 +917,51 @@
 
 
   // Interactive affiliate schedule: 30 days including today, with sticky date column.
-  const affiliateGridTimes = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
-  const affiliateGridBase = ['A','B','C','D','E','B','C','D','E','A','C','D','E','A','B'];
+  let affiliateGridTimes = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'];
+  let affiliateGridBase = ['A','B','C','D','E','A','B','C','D'];
+  function affiliateScheduleSettings() {
+    if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return {productsPerDay:3,videosPerDay:9};
+    const raw=progressData.__affiliateScheduleSettings||{};
+    return {
+      productsPerDay:Math.max(1,Math.min(5,Number(raw.productsPerDay)||3)),
+      videosPerDay:Math.max(1,Math.min(15,Number(raw.videosPerDay)||9))
+    };
+  }
+  function configureAffiliateSchedule() {
+    const settings=affiliateScheduleSettings();
+    affiliateGridTimes=Array.from({length:settings.videosPerDay},(_,i)=>{
+      const minutes=7*60+i*60;
+      return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
+    });
+    const products=['A','B','C','D','E'].slice(0,settings.productsPerDay);
+    affiliateGridBase=Array.from({length:settings.videosPerDay},(_,i)=>products[i%products.length]);
+  }
+  async function saveAffiliateScheduleSettings() {
+    const productsInput=$('affiliate-settings-products'), videosInput=$('affiliate-settings-videos');
+    if(!productsInput||!videosInput) return;
+    const productsPerDay=Math.max(1,Math.min(5,Number(productsInput.value)||1));
+    const videosPerDay=Math.max(1,Math.min(15,Number(videosInput.value)||1));
+    if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return;
+    progressData.__affiliateScheduleSettings={productsPerDay,videosPerDay};
+    configureAffiliateSchedule();
+    if(typeof saveData==='function') await saveData();
+    renderAffiliateSchedule();
+  }
+  function ensureAffiliateScheduleSettingsUI() {
+    const range=$('affiliate-grid-range');
+    const section=range&&range.closest('section');
+    if(!section||$('affiliate-schedule-settings')) return;
+    const panel=document.createElement('div');
+    panel.id='affiliate-schedule-settings';
+    panel.className='mb-3 rounded-xl border border-slate-700 bg-slate-950/50 p-3';
+    panel.innerHTML='<div class="mb-2 flex items-center justify-between gap-2"><p class="text-xs font-bold text-slate-100">Pengaturan jadwal 30 hari</p><span class="text-[10px] text-emerald-300">Mulai 07.00</span></div><div class="grid grid-cols-2 gap-2"><label class="text-[11px] text-slate-300">Produk per hari<select id="affiliate-settings-products" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-sm"><option value="1">1 produk</option><option value="2">2 produk</option><option value="3">3 produk</option><option value="4">4 produk</option><option value="5">5 produk</option></select></label><label class="text-[11px] text-slate-300">Video per hari<select id="affiliate-settings-videos" class="mt-1 w-full rounded-lg border border-slate-700 px-2 py-2 text-sm"><option value="1">1 video</option><option value="2">2 video</option><option value="3">3 video</option><option value="4">4 video</option><option value="5">5 video</option><option value="6">6 video</option><option value="7">7 video</option><option value="8">8 video</option><option value="9">9 video</option><option value="10">10 video</option><option value="11">11 video</option><option value="12">12 video</option><option value="13">13 video</option><option value="14">14 video</option><option value="15">15 video</option></select></label></div><p class="mt-2 text-[10px] leading-relaxed text-slate-400">Jadwal membagi video per jam mulai pukul 07.00. Ini mengatur pengingat/rencana di aplikasi, bukan menjeda atau mengunggah otomatis ke TikTok/Shopee.</p><button id="affiliate-settings-save" type="button" class="mt-2 w-full rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white">Simpan pengaturan</button>';
+    const legend=section.querySelector('.mb-2.flex.flex-wrap');
+    if(legend) section.insertBefore(panel,legend); else section.insertBefore(panel,section.children[1]||null);
+    const settings=affiliateScheduleSettings();
+    $('affiliate-settings-products').value=String(settings.productsPerDay);
+    $('affiliate-settings-videos').value=String(settings.videosPerDay);
+    $('affiliate-settings-save').addEventListener('click',saveAffiliateScheduleSettings);
+  }
   function affiliateGridStartDate() {
     const d = new Date();
     d.setHours(12,0,0,0);
@@ -984,6 +1027,8 @@
   function renderAffiliateSchedule() {
     const head=$('affiliate-grid-head'), body=$('affiliate-grid-body');
     if(!head||!body) return;
+    configureAffiliateSchedule();
+    ensureAffiliateScheduleSettingsUI();
     head.innerHTML=''; body.innerHTML='';
     const hr=document.createElement('tr');
     ['Tanggal',...affiliateGridTimes].forEach((label,index)=>{
@@ -1114,6 +1159,13 @@
       edit.textContent = '✏️';
       edit.title = 'Edit catatan';
       edit.addEventListener('click', () => editNote(note.id));
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'rounded-xl border border-rose-500/25 bg-rose-500/10 px-2.5 py-2 text-sm text-rose-300 active:scale-95';
+      deleteButton.textContent = '🗑';
+      deleteButton.title = 'Hapus catatan';
+      deleteButton.setAttribute('aria-label', 'Hapus catatan ' + (note.name || 'tanpa nama'));
+      deleteButton.addEventListener('click', () => deleteNote(note.id));
       const more = document.createElement('details');
       more.className = 'relative';
       const summary = document.createElement('summary');
@@ -1137,7 +1189,7 @@
         makeMenuButton('🗑 Hapus', 'Hapus catatan', () => deleteNote(note.id), false)
       );
       more.append(summary, menu);
-      actions.append(copy, edit, more);
+      actions.append(copy, edit, deleteButton, more);
       card.append(icon, main, actions);
       host.appendChild(card);
     });
