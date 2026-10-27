@@ -925,7 +925,7 @@
     return {
       productsPerDay:Math.max(1,Math.min(5,Number(raw.productsPerDay)||3)),
       videosPerDay:Math.max(1,Math.min(15,Number(raw.videosPerDay)||9)),
-      orderMode:raw.orderMode==='alternating'?'alternating':'grouped'
+      orderMode:raw.orderMode==='grouped'?'grouped':'alternating'
     };
   }
   function buildAffiliateDaySequence(dayIndex, previousLast, previousSequence, olderSequence) {
@@ -1005,6 +1005,13 @@
     configureAffiliateSchedule();
     if(typeof saveData==='function') await saveData();
     renderAffiliateSchedule();
+    // Close only after the chosen settings have been saved and the schedule refreshed.
+    const panel=$('affiliate-schedule-settings');
+    if(panel) panel.style.display='none';
+    const saved=affiliateScheduleSettings();
+    if($('affiliate-settings-order')) $('affiliate-settings-order').value=saved.orderMode;
+    if($('affiliate-settings-products')) $('affiliate-settings-products').value=String(saved.productsPerDay);
+    if($('affiliate-settings-videos')) $('affiliate-settings-videos').value=String(Math.max(1,Math.min(5,saved.videosPerDay)));
   }
   function ensureAffiliateScheduleSettingsUI() {
     const range=$('affiliate-grid-range');
