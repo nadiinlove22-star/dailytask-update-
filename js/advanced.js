@@ -942,7 +942,7 @@
     const productsInput=$('affiliate-settings-products'), videosInput=$('affiliate-settings-videos');
     if(!productsInput||!videosInput) return;
     const productsPerDay=Math.max(1,Math.min(5,Number(productsInput.value)||1));
-    const videosPerDay=Math.max(1,Math.min(5,Number(videosInput.value)||1));
+    const maxVideosPerProduct=Math.max(1,Math.min(5,Math.floor(15/productsPerDay)));\n    const videosPerDay=Math.max(1,Math.min(maxVideosPerProduct,Number(videosInput.value)||1));
     if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return;
     progressData.__affiliateScheduleSettings={productsPerDay,videosPerDay};
     configureAffiliateSchedule();
@@ -967,9 +967,13 @@
     $('affiliate-settings-products').value=String(settings.productsPerDay);
     $('affiliate-settings-videos').value=String(Math.max(1,Math.min(5,settings.videosPerDay)));
     const updateSummary=()=>{
-      const products=Number($('affiliate-settings-products').value)||1, videos=Number($('affiliate-settings-videos').value)||1;
-      const total=Math.min(15,products*videos);
-      $('affiliate-settings-summary').textContent='Total '+total+' video per hari ('+products+' produk × '+videos+' video per produk), maksimal 15 video. '+(total===15?'Jarak 1 jam.':total>=8?'Jarak sekitar 2 jam.':'Jarak lebih renggang sesuai jumlah video.');
+      const products=Number($('affiliate-settings-products').value)||1;
+      const videoSelect=$('affiliate-settings-videos');
+      const maxVideos=Math.max(1,Math.min(5,Math.floor(15/products)));
+      Array.from(videoSelect.options).forEach(option=>{option.disabled=Number(option.value)>maxVideos;});
+      if(Number(videoSelect.value)>maxVideos) videoSelect.value=String(maxVideos);
+      const videos=Number(videoSelect.value)||1, total=products*videos;
+      $('affiliate-settings-summary').textContent='Total '+total+' video per hari ('+products+' produk × '+videos+' video per produk). Maksimal 15 video sehari dan maksimal 5 video per produk.'+(total===15?' Jarak 1 jam.':total>=8?' Jarak sekitar 2 jam.':' Jarak lebih renggang sesuai jumlah video.');
     };
     launcher.addEventListener('click',()=>{panel.style.display=panel.style.display==='none'?'block':'none';updateSummary();});
     $('affiliate-settings-close').addEventListener('click',()=>{panel.style.display='none';});
