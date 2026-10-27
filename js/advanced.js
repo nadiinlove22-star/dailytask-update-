@@ -342,15 +342,27 @@
     const periodEnd = $('product-editor-period-end')?.value || '';
     item.trendPeriod = periodStart || periodEnd ? { start: periodStart || null, end: periodEnd || null } : (item.trendPeriod || null);
     const commission = { percent:$('product-editor-commission-percent')?.value.trim() || null, amountRupiah:$('product-editor-commission-amount')?.value.trim() || null, totalRupiah:$('product-editor-commission-total')?.value.trim() || null };
-    const priceForMath = item.priceRupiah != null && Number.isFinite(Number(item.priceRupiah)) && Number(item.priceRupiah) > 0 ? Number(item.priceRupiah) : null;
+    let priceForMath = item.priceRupiah != null && Number.isFinite(Number(item.priceRupiah)) && Number(item.priceRupiah) > 0 ? Number(item.priceRupiah) : null;
     let commissionPercent = commission.percent === null ? null : Number(commission.percent);
     let commissionAmount = commission.amountRupiah === null ? null : Number(commission.amountRupiah);
-    // Derive a missing value only when both required inputs are explicitly available.
+    let priceCalculated = false;
+    // Hitung hanya jika dua nilai pendukung tersedia dan valid; jangan memakai total komisi sebagai komisi per penjualan.
     if (commissionPercent === null && priceForMath !== null && commissionAmount !== null && commissionAmount >= 0) {
       commissionPercent = commissionAmount / priceForMath * 100;
     }
     if (commissionAmount === null && priceForMath !== null && commissionPercent !== null && commissionPercent >= 0 && commissionPercent <= 100) {
       commissionAmount = priceForMath * commissionPercent / 100;
+    }
+    // Jika harga tidak terbaca, turunkan dari komisi per penjualan dan persentase komisi.
+    if (priceForMath === null && commissionAmount !== null && commissionAmount >= 0 && commissionPercent !== null && commissionPercent > 0 && commissionPercent <= 100) {
+      priceForMath = commissionAmount / (commissionPercent / 100);
+      if (Number.isFinite(priceForMath) && priceForMath > 0) {
+        item.priceRupiah = Math.round(priceForMath);
+        priceForMath = item.priceRupiah;
+        priceCalculated = true;
+      } else {
+        priceForMath = null;
+      }
     }
     item.commission = {
       percent: commissionPercent === null || !Number.isFinite(commissionPercent) ? null : Math.round(commissionPercent * 100) / 100,
@@ -359,6 +371,7 @@
     };
     item.commission.calculatedPercent = commission.percent === null && item.commission.percent !== null;
     item.commission.calculatedAmount = commission.amountRupiah === null && item.commission.amountRupiah !== null;
+    item.priceCalculated = priceCalculated || Boolean(old && old.priceCalculated);
     try {
       const changes = JSON.parse($('product-editor-trend-changes')?.value || '{}');
       if (changes && typeof changes === 'object') item.trendChanges = changes;
