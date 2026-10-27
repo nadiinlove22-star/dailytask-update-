@@ -872,7 +872,16 @@
       $('product-editor-period-start').value = data.periodStart || '';
       $('product-editor-period-end').value = data.periodEnd || '';
       $('product-editor-trend-changes').value = JSON.stringify(data.changes || {});
-      $('product-editor-commission-percent').value = data.commissionPercent ?? '';
+      // Isi persentase komisi secara deterministik bila screenshot menampilkan harga dan komisi per penjualan tetapi persentasenya tidak terbaca.
+      const detectedPrice = Number(data.priceRupiah);
+      const detectedCommissionAmount = Number(data.commissionAmountRupiah);
+      let detectedCommissionPercent = data.commissionPercent;
+      if ((detectedCommissionPercent === null || detectedCommissionPercent === undefined || detectedCommissionPercent === '') &&
+          Number.isFinite(detectedPrice) && detectedPrice > 0 &&
+          Number.isFinite(detectedCommissionAmount) && detectedCommissionAmount >= 0) {
+        detectedCommissionPercent = Math.round((detectedCommissionAmount / detectedPrice * 100) * 100) / 100;
+      }
+      $('product-editor-commission-percent').value = detectedCommissionPercent ?? '';
       $('product-editor-commission-amount').value = data.commissionAmountRupiah ?? '';
       $('product-editor-commission-total').value = data.commissionTotalRupiah ?? '';
       window.__pendingProductAiAnalysis = data.aiAnalysis || null;
