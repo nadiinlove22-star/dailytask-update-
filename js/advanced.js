@@ -928,26 +928,54 @@
       orderMode:raw.orderMode==='alternating'?'alternating':'grouped'
     };
   }
+  function buildAffiliateDaySequence(dayIndex, previousLast) {
+    const settings=affiliateScheduleSettings();
+    const products=['A','B','C','D','E'].slice(0,settings.productsPerDay);
+    const videosPerProduct=Math.max(1,Math.min(5,settings.videosPerDay));
+    const totalVideos=Math.min(15,products.length*videosPerProduct);
+    if(settings.orderMode!=='alternating') return products.flatMap(code=>Array.from({length:videosPerProduct},()=>code)).slice(0,totalVideos);
+    const counts=products.map(()=>videosPerProduct), memo=new Set();
+    const search=(remaining,last,path)=>{
+      if(path.length===totalVideos) return last!==previousLast?path.slice():null;
+      const key=remaining.join('')+'|'+last+'|'+path.length;
+      if(memo.has(key)) return null;
+      memo.add(key);
+      const order=products.map((code,index)=>({code,index,left:remaining[index]}))
+        .filter(item=>item.left>0&&item.code!==last&&(path.length!==0||item.code!==previousLast))
+        .sort((a,b)=>b.left-a.left||((a.index-dayIndex-path.length+products.length*10)%products.length)-((b.index-dayIndex-path.length+products.length*10)%products.length));
+      for(const item of order){
+        remaining[item.index]--;
+        const result=search(remaining,item.code,path.concat(item.code));
+        remaining[item.index]++;
+        if(result) return result;
+      }
+      return null;
+    };
+    const found=search(counts,null,[]);
+    if(found) return found;
+    // Some settings cannot satisfy every rule (e.g. one product with several videos).
+    const fallback=[];
+    for(let round=0;round<videosPerProduct;round++){
+      const offset=(dayIndex+round)%Math.max(1,products.length);
+      const row=products.slice(offset).concat(products.slice(0,offset));
+      fallback.push(...row);
+    }
+    return fallback.slice(0,totalVideos);
+  }
+  function affiliateSequenceForDay(dayIndex) {
+    let previousLast=null, sequence=[];
+    for(let day=0;day<=dayIndex;day++){
+      sequence=buildAffiliateDaySequence(day,previousLast);
+      if(sequence.length) previousLast=sequence[sequence.length-1];
+    }
+    return sequence;
+  }
   function configureAffiliateSchedule() {
     const settings=affiliateScheduleSettings();
     const products=['A','B','C','D','E'].slice(0,settings.productsPerDay);
     const videosPerProduct=Math.max(1,Math.min(5,settings.videosPerDay));
     const totalVideos=Math.min(15,products.length*videosPerProduct);
-    const sequence=[];
-    if(settings.orderMode==='alternating'){
-      for(let round=0;round<videosPerProduct;round++){
-        let row=products.slice();
-        if(round%2===1){
-          for(let i=0;i+1<row.length;i+=2){const temp=row[i];row[i]=row[i+1];row[i+1]=temp;}
-        } else if(round>0 && row.length>2){
-          row=row.slice(round%row.length).concat(row.slice(0,round%row.length));
-        }
-        sequence.push(...row);
-      }
-    } else {
-      sequence.push(...products.flatMap(code=>Array.from({length:videosPerProduct},()=>code)));
-    }
-    affiliateGridBase=sequence.slice(0,totalVideos);
+    affiliateGridBase=affiliateSequenceForDay(0);
     affiliateGridTimes=Array.from({length:totalVideos},(_,i)=>{
       const minutes=totalVideos===1?7*60:7*60+Math.round((14*60*i)/(totalVideos-1));
       return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
@@ -1050,11 +1078,11 @@
     timesHost.innerHTML='';
     // Keep the selected product/date highlighted green until another cell is selected.
     window.__affiliateGridSelected={dateKey,productCode};
-    const shift=Math.floor((d.getTime()-affiliateGridStartDate().getTime())/86400000)%5;
+    const dayIndex=Math.max(0,Math.floor((d.getTime()-affiliateGridStartDate().getTime())/86400000));
+    const daySequence=affiliateSequenceForDay(dayIndex);
     const done=affiliateGridDoneData();
     const matching=[];
-    affiliateGridBase.forEach((baseCode,slot)=>{
-      const code=String.fromCharCode((baseCode.charCodeAt(0)-65+shift)%5+65);
+    daySequence.forEach((code,slot)=>{
       if(code===productCode) matching.push({time:affiliateGridTimes[slot],done:done[dateKey+'_'+affiliateGridTimes[slot]]===true});
     });
     if(!matching.length){
@@ -1117,9 +1145,8 @@
       dayLabel.textContent=dayNames[d.getDay()]+(isToday?' · HARI INI':'');
       const dateLabel=document.createElement('div');dateLabel.className='mt-1 text-[10px]';dateLabel.textContent=affiliateGridDateLabel(d);
       dateCell.append(dayLabel,dateLabel);tr.appendChild(dateCell);
-      const shift=day%5;
-      affiliateGridBase.forEach((code,slot)=>{
-        const product=String.fromCharCode((code.charCodeAt(0)-65+shift)%5+65);
+      const daySequence=affiliateSequenceForDay(day);
+      daySequence.forEach((product,slot)=>{
         const itemKey=key+'_'+affiliateGridTimes[slot], isDone=done[itemKey]===true;
         const td=document.createElement('td');td.className='border border-slate-800 p-0';
         td.style.background=isToday?'#173526':(day%2?'#18231c':'#111713');
