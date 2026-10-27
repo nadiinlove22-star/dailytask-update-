@@ -220,8 +220,6 @@
   }
   function hasMetric(value) { return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0; }
   function productScore(product) {
-    const aiScore = product && product.aiAnalysis && Number(product.aiAnalysis.score);
-    if (Number.isFinite(aiScore) && aiScore >= 0 && aiScore <= 100) return Math.round(aiScore);
     const t = product && product.trend || {};
     const hasCtr = hasMetric(t.ctr);
     const hasOrders = hasMetric(t.orders);
@@ -229,28 +227,35 @@
     const hasCart = hasMetric(t.cart);
     if (!(hasCtr || hasOrders || hasCreators || hasCart)) return null;
 
-    // Bobot disamakan dengan keterangan UI: pesanan 40%, CTR 25%, kreator 15%, add-to-cart 20%.
-    // Metrik yang belum diisi tidak dianggap nol; bobot dinormalisasi hanya dari data yang tersedia.
+    // Skor deterministik agar konsisten: CTR 35%, pesanan 30%, peluang persaingan 25%, rasio add-to-cart/pesanan 10%.
+    // Data yang tidak tersedia tidak ditebak; bobot hanya dinormalisasi dari metrik yang tersedia.
     let score = 0, totalWeight = 0;
-    if (hasOrders) {
-      const volume = Math.min(100, Math.round(Math.log10(Number(t.orders) + 1) / 4 * 100));
-      score += volume * 0.40;
-      totalWeight += 0.40;
-    }
     if (hasCtr) {
       const ctr = Number(t.ctr);
-      score += (ctr >= 3.5 ? 100 : ctr >= 2.0 ? 70 : 40) * 0.25;
-      totalWeight += 0.25;
+      const points = ctr >= 3.5 ? 100 : ctr >= 2.0 ? 70 : 40;
+      score += points * 0.35;
+      totalWeight += 0.35;
+    }
+    if (hasOrders) {
+      const orders = Number(t.orders);
+      const points = orders >= 1000 ? 100 : orders >= 500 ? 90 : orders >= 100 ? 80 : orders >= 50 ? 70 : orders >= 10 ? 55 : orders > 0 ? 40 : 0;
+      score += points * 0.30;
+      totalWeight += 0.30;
     }
     if (hasCreators) {
-      // Jumlah kreator dipakai sebagai proksi tingkat persaingan, bukan ukuran penjualan.
-      score += (Number(t.creators) < 500 ? 100 : 60) * 0.15;
-      totalWeight += 0.15;
+      const creators = Number(t.creators);
+      const points = creators <= 10 ? 100 : creators <= 50 ? 85 : creators <= 100 ? 70 : creators <= 500 ? 45 : 15;
+      score += points * 0.25;
+      totalWeight += 0.25;
     }
-    if (hasCart) {
-      const cartVolume = Math.min(100, Math.round(Math.log10(Number(t.cart) + 1) / 4 * 100));
-      score += cartVolume * 0.20;
-      totalWeight += 0.20;
+    if (hasCart && hasOrders && Number(t.orders) > 0) {
+      const ratio = Number(t.cart) / Number(t.orders);
+      const points = ratio >= 1.5 ? 100 : ratio >= 1 ? 80 : ratio >= 0.5 ? 60 : ratio > 0 ? 40 : 20;
+      score += points * 0.10;
+      totalWeight += 0.10;
+    } else if (hasCart && !hasOrders) {
+      // Jika pesanan tidak tersedia, jangan menganggap jumlah keranjang sebagai rasio.
+      // Bobot 10% dikeluarkan sampai data pesanan tersedia.
     }
     return totalWeight ? Math.round(score / totalWeight) : null;
   }
