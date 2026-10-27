@@ -980,6 +980,20 @@
     panel.style.display='none';
     panel.innerHTML='<div class="mb-3 flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-100">Pengaturan jadwal 30 hari</p><button id="affiliate-settings-close" type="button" class="rounded-lg px-2 py-1 text-lg text-slate-300" aria-label="Tutup pengaturan">×</button></div><div class="mb-2"><label class="text-xs text-slate-300">Urutan produk<select id="affiliate-settings-order" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="alternating">Selang-seling (A-B-C-D, lalu bergantian)</option><option value="grouped">Berkelompok (AAAA-BBBB-CCCC)</option></select></label></div><div class="grid grid-cols-2 gap-2"><label class="text-xs text-slate-300">Produk per hari<select id="affiliate-settings-products" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 produk</option><option value="2">2 produk</option><option value="3">3 produk</option><option value="4">4 produk</option><option value="5">5 produk</option></select></label><label class="text-xs text-slate-300">Video per produk<select id="affiliate-settings-videos" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-sm"><option value="1">1 video</option><option value="2">2 video</option><option value="3">3 video</option><option value="4">4 video</option><option value="5">5 video</option></select></label></div><p id="affiliate-settings-summary" class="mt-3 text-xs leading-relaxed text-emerald-300"></p><p class="mt-2 text-[10px] leading-relaxed text-slate-400">Jadwal dimulai pukul 07.00 dan membagi waktu sampai 21.00. Ini rencana/pengingat di aplikasi, bukan unggah atau jeda otomatis di TikTok/Shopee.</p><button id="affiliate-settings-save" type="button" class="mt-3 w-full rounded-xl bg-emerald-700 px-3 py-2.5 text-xs font-bold text-white">Simpan pengaturan</button>';
     document.body.append(launcher,panel);
+    // The schedule settings FAB must only appear while the Schedule tab is active.
+    const syncScheduleFabVisibility=()=>{
+      const scheduleTab=$('tab-stats');
+      const isScheduleActive=!!scheduleTab&&!scheduleTab.classList.contains('hidden');
+      launcher.style.display=isScheduleActive?'flex':'none';
+      if(!isScheduleActive) panel.style.display='none';
+    };
+    syncScheduleFabVisibility();
+    const scheduleTabForObserver=$('tab-stats');
+    if(scheduleTabForObserver&&!scheduleTabForObserver.dataset.scheduleFabObserver){
+      const observer=new MutationObserver(syncScheduleFabVisibility);
+      observer.observe(scheduleTabForObserver,{attributes:true,attributeFilter:['class']});
+      scheduleTabForObserver.dataset.scheduleFabObserver='1';
+    }
     const settings=affiliateScheduleSettings();
     $('affiliate-settings-order').value=settings.orderMode==='alternating'?'alternating':'grouped';
     $('affiliate-settings-products').value=String(settings.productsPerDay);
