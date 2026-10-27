@@ -942,7 +942,8 @@
     const productsInput=$('affiliate-settings-products'), videosInput=$('affiliate-settings-videos');
     if(!productsInput||!videosInput) return;
     const productsPerDay=Math.max(1,Math.min(5,Number(productsInput.value)||1));
-    const maxVideosPerProduct=Math.max(1,Math.min(5,Math.floor(15/productsPerDay)));\n    const videosPerDay=Math.max(1,Math.min(maxVideosPerProduct,Number(videosInput.value)||1));
+    const maxVideosPerProduct=Math.max(1,Math.min(5,Math.floor(15/productsPerDay)));
+    const videosPerDay=Math.max(1,Math.min(maxVideosPerProduct,Number(videosInput.value)||1));
     if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return;
     progressData.__affiliateScheduleSettings={productsPerDay,videosPerDay};
     configureAffiliateSchedule();
