@@ -924,7 +924,8 @@
     const raw=progressData.__affiliateScheduleSettings||{};
     return {
       productsPerDay:Math.max(1,Math.min(5,Number(raw.productsPerDay)||3)),
-      videosPerDay:Math.max(1,Math.min(15,Number(raw.videosPerDay)||9))
+      videosPerDay:Math.max(1,Math.min(15,Number(raw.videosPerDay)||9)),
+      orderMode:raw.orderMode==='alternating'?'alternating':'grouped'
     };
   }
   function configureAffiliateSchedule() {
@@ -1169,14 +1170,15 @@
     }
     notes.forEach((note, index) => {
       const card = document.createElement('section');
-      card.className = 'rounded-2xl border border-slate-800 bg-slate-900/80 p-3 flex items-center gap-3 shadow-sm';
+      card.className = 'rounded-xl border border-slate-800 bg-slate-900/80 p-2 flex items-center gap-2 shadow-sm';
       const icon = document.createElement('div');
-      icon.className = 'shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-300';
+      icon.className = 'shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-300 text-sm';
       icon.textContent = '🗒️';
       const main = document.createElement('div');
       main.className = 'flex-1 min-w-0';
       const name = document.createElement('p');
-      name.className = 'text-sm font-semibold text-slate-100 break-words';
+      name.className = 'text-sm font-semibold text-slate-100 truncate';
+      name.title = note.name || 'Catatan tanpa nama';
       name.textContent = note.name || 'Catatan tanpa nama';
       const meta = document.createElement('p');
       meta.className = 'mt-1 text-[11px] text-slate-500';
@@ -1185,22 +1187,22 @@
       meta.textContent = (chars ? chars.toLocaleString('id-ID') + ' karakter' : 'Belum ada isi') + (links ? ' · ' + links + '+ tautan' : '');
       main.append(name, meta);
       const actions = document.createElement('div');
-      actions.className = 'flex shrink-0 items-center gap-1.5';
+      actions.className = 'flex shrink-0 items-center gap-0.5';
       const copy = document.createElement('button');
       copy.type = 'button';
-      copy.className = 'rounded-xl bg-emerald-500/15 border border-emerald-500/25 px-3 py-2 text-xs font-semibold text-emerald-300 active:scale-95';
+      copy.className = 'h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 px-2 text-[10px] font-semibold text-emerald-300 active:scale-95';
       copy.textContent = 'Salin';
       copy.title = 'Salin seluruh isi catatan';
       copy.addEventListener('click', () => copyNote(note.id));
       const edit = document.createElement('button');
       edit.type = 'button';
-      edit.className = 'rounded-xl bg-slate-800 px-2.5 py-2 text-xs text-slate-200 active:scale-95';
+      edit.className = 'flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-[10px] text-slate-200 active:scale-95';
       edit.textContent = '✏️';
       edit.title = 'Edit catatan';
       edit.addEventListener('click', () => editNote(note.id));
       const deleteButton = document.createElement('button');
       deleteButton.type = 'button';
-      deleteButton.className = 'rounded-xl border border-rose-500/25 bg-rose-500/10 px-2.5 py-2 text-sm text-rose-300 active:scale-95';
+      deleteButton.className = 'flex h-7 w-7 items-center justify-center rounded-lg border border-rose-500/25 bg-rose-500/10 text-[10px] text-rose-300 active:scale-95';
       deleteButton.textContent = '🗑';
       deleteButton.title = 'Hapus catatan';
       deleteButton.setAttribute('aria-label', 'Hapus catatan ' + (note.name || 'tanpa nama'));
@@ -1208,7 +1210,7 @@
       const more = document.createElement('details');
       more.className = 'relative';
       const summary = document.createElement('summary');
-      summary.className = 'list-none cursor-pointer rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300 active:scale-95';
+      summary.className = 'list-none cursor-pointer flex h-7 w-6 items-center justify-center rounded-lg bg-slate-800 text-xs text-slate-300 active:scale-95';
       summary.textContent = '⋮';
       const menu = document.createElement('div');
       menu.className = 'absolute right-0 top-10 z-20 flex min-w-32 flex-col gap-1 rounded-xl border border-slate-700 bg-slate-950 p-1.5 shadow-xl';
