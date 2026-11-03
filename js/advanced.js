@@ -1155,9 +1155,9 @@
     const now=new Date(); now.setHours(12,0,0,0);
     if(!window.__affiliateCalendarMonth) window.__affiliateCalendarMonth={year:now.getFullYear(),month:now.getMonth()};
     if(!window.__affiliateCalendarSelected) window.__affiliateCalendarSelected=affiliateGridDateKey(now);
-    const selected=window.__affiliateCalendarSelected;
     const countForDate=key=>uploadedKeys.filter(k=>k.startsWith(key+'_')).length;
     const renderCalendar=()=>{
+      const selected=window.__affiliateCalendarSelected;
       const state=window.__affiliateCalendarMonth;
       $('affiliate-calendar-month').textContent=new Date(state.year,state.month,1).toLocaleDateString('id-ID',{month:'long',year:'numeric'});
       const host=$('affiliate-calendar-days'); host.innerHTML='';
