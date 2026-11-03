@@ -1130,76 +1130,77 @@
     if(!head||!body) return;
     configureAffiliateSchedule();
     ensureAffiliateScheduleSettingsUI();
-    head.innerHTML=''; body.innerHTML='';
-    const hr=document.createElement('tr');
-    ['Tanggal',...affiliateGridTimes].forEach((label,index)=>{
-      const th=document.createElement('th');
-      th.textContent=label;
-      th.className='border border-slate-700 px-2 py-3 font-bold text-white';
-      th.style.background='#244d35';
-      th.style.width=index===0?'88px':'58px';th.style.minWidth=index===0?'88px':'58px';th.style.maxWidth=index===0?'88px':'58px';
-      th.style.height='42px';
-      if(index===0){th.style.position='sticky';th.style.left='0';th.style.zIndex='5';th.style.boxShadow='2px 0 3px rgba(0,0,0,.25)';}
-      hr.appendChild(th);
-    });
-    head.appendChild(hr);
-    const start=affiliateGridStartDate();
-    const end=new Date(start); end.setDate(end.getDate()+29);
-    const range=$('affiliate-grid-range');
-    if(range) range.textContent=affiliateGridDateLabel(start)+' – '+affiliateGridDateLabel(end);
-    const todayKey=affiliateGridDateKey(new Date());
-    const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    const section=$('affiliate-grid-range').closest('section');
+    // Replace the dense timetable with a compact lifetime counter and a navigable monthly calendar.
+    let summary=$('affiliate-upload-summary'), calendar=$('affiliate-upload-calendar');
+    if(!summary){
+      summary=document.createElement('button');
+      summary.id='affiliate-upload-summary'; summary.type='button';
+      summary.className='mb-3 flex w-full items-center justify-between rounded-xl border border-emerald-500/25 bg-emerald-950/40 p-4 text-left';
+      section.insertBefore(summary,section.firstChild);
+    }
+    if(!calendar){
+      calendar=document.createElement('div'); calendar.id='affiliate-upload-calendar';
+      calendar.className='mb-3 rounded-xl border border-slate-700 bg-slate-900/70 p-3';
+      calendar.style.display='none';
+      calendar.innerHTML='<div class="mb-3 flex items-center justify-between gap-2"><button id="affiliate-calendar-prev" type="button" class="rounded-lg bg-slate-800 px-3 py-2 text-white" aria-label="Bulan sebelumnya">‹</button><div id="affiliate-calendar-month" class="text-sm font-bold text-white"></div><button id="affiliate-calendar-next" type="button" class="rounded-lg bg-slate-800 px-3 py-2 text-white" aria-label="Bulan berikutnya">›</button></div><div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400"><span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span></div><div id="affiliate-calendar-days" class="mt-2 grid grid-cols-7 gap-1"></div><div id="affiliate-calendar-detail" class="mt-3 rounded-lg border border-slate-700 bg-slate-950/60 p-3"><p class="text-xs text-slate-400">Pilih tanggal untuk melihat jumlah video yang sudah di-upload.</p></div>';
+      summary.after(calendar);
+    }
+    // Keep the legacy table in the DOM for compatibility, but hide it from the new compact view.
+    const legacy=[head.closest('div'),$('affiliate-grid-scroll'),$('affiliate-product-detail'),section.querySelector('p.mt-2')];
+    legacy.forEach(el=>{if(el)el.style.display='none';});
     const done=affiliateGridDoneData();
-    for(let day=0;day<30;day++){
-      const d=new Date(start); d.setDate(start.getDate()+day);
-      const key=affiliateGridDateKey(d), isToday=key===todayKey;
-      const tr=document.createElement('tr');
-      if(isToday) tr.style.outline='2px solid #34d399';
-      const dateCell=document.createElement('th');
-      dateCell.className='border border-slate-800 px-2 py-2 text-left font-semibold';
-      dateCell.style.position='sticky';dateCell.style.left='0';dateCell.style.zIndex='3';dateCell.style.width='88px';dateCell.style.minWidth='88px';dateCell.style.maxWidth='88px';dateCell.style.boxShadow='2px 0 3px rgba(0,0,0,.25)';
-      dateCell.style.background=isToday?'#14532d':(day%2?'#202722':'#191f1b');
-      dateCell.style.color=isToday?'#ffffff':'#e2e8f0';
-      const dayLabel=document.createElement('div');
-      dayLabel.textContent=dayNames[d.getDay()]+(isToday?' · HARI INI':'');
-      const dateLabel=document.createElement('div');dateLabel.className='mt-1 text-[10px]';dateLabel.textContent=affiliateGridDateLabel(d);
-      dateCell.append(dayLabel,dateLabel);tr.appendChild(dateCell);
-      const daySequence=affiliateSequenceForDay(day);
-      daySequence.forEach((product,slot)=>{
-        const itemKey=key+'_'+affiliateGridTimes[slot], isDone=done[itemKey]===true;
-        const td=document.createElement('td');td.className='border border-slate-800 p-0';
-        td.style.background=isToday?'#173526':(day%2?'#18231c':'#111713');
-        const button=document.createElement('button');button.type='button';
-        button.textContent=isDone?'✓ '+product:product;
-        button.title=(isDone?'Sudah selesai':'Belum selesai')+' · '+affiliateGridTimes[slot]+' · Produk '+product+' · ketuk untuk memilih produk';
-        button.setAttribute('aria-pressed',isDone?'true':'false');
-        button.className='flex min-h-[42px] w-full min-w-[58px] items-center justify-center px-2 font-bold transition-colors';
-        // Blue means the upload slot is completed; green means the cell is currently selected.
-        const selected=!!(window.__affiliateGridSelected&&window.__affiliateGridSelected.dateKey===key&&window.__affiliateGridSelected.productCode===product);
-        button.style.color=isDone?'#ffffff':(selected?'#ffffff':'#b7d8c1');
-        button.style.background=isDone?'#2563eb':(selected?'#059669':'transparent');
-        button.style.boxShadow=selected&&!isDone?'inset 0 0 0 2px #34d399':'none';
-        button.addEventListener('click',()=>{
-          showAffiliateProductTimes(key,product);
-          renderAffiliateSchedule();
-          showAffiliateProductTimes(key,product);
+    const uploadedKeys=Object.keys(done).filter(k=>done[k]===true);
+    summary.innerHTML='<span class="min-w-0"><span class="block text-xs text-emerald-200">Total video sudah di-upload</span><span class="mt-1 block text-3xl font-extrabold text-white tabular-nums">'+uploadedKeys.length+'</span><span class="mt-1 block text-[11px] text-slate-400">Akumulasi semua tanggal · ketuk untuk buka kalender</span></span><span class="ml-3 shrink-0 rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Lihat kalender　⌄</span>';
+    const now=new Date(); now.setHours(12,0,0,0);
+    if(!window.__affiliateCalendarMonth) window.__affiliateCalendarMonth={year:now.getFullYear(),month:now.getMonth()};
+    if(!window.__affiliateCalendarSelected) window.__affiliateCalendarSelected=affiliateGridDateKey(now);
+    const selected=window.__affiliateCalendarSelected;
+    const countForDate=key=>uploadedKeys.filter(k=>k.startsWith(key+'_')).length;
+    const renderCalendar=()=>{
+      const state=window.__affiliateCalendarMonth;
+      $('affiliate-calendar-month').textContent=new Date(state.year,state.month,1).toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+      const host=$('affiliate-calendar-days'); host.innerHTML='';
+      const first=new Date(state.year,state.month,1,12), offset=first.getDay();
+      const days=new Date(state.year,state.month+1,0).getDate();
+      for(let n=0;n<offset;n++){const blank=document.createElement('span');host.appendChild(blank);}
+      for(let day=1;day<=days;day++){
+        const d=new Date(state.year,state.month,day,12), key=affiliateGridDateKey(d), count=countForDate(key);
+        const b=document.createElement('button');b.type='button';
+        b.className='relative flex min-h-[48px] flex-col items-center justify-center rounded-lg border text-xs';
+        b.style.borderColor=key===selected?'#34d399':'#334155';
+        b.style.background=key===selected?'#065f46':count?'#123d2c':'#111827';
+        b.style.color='#f8fafc';
+        b.innerHTML='<span class="font-bold">'+day+'</span><span class="mt-0.5 text-[9px]" style="color:'+(count?'#6ee7b7':'#64748b')+'">'+(count?count+' video':'—')+'</span>';
+        b.addEventListener('click',()=>{window.__affiliateCalendarSelected=key;renderCalendar();});
+        host.appendChild(b);
+      }
+      const parts=selected.split('-').map(Number), date=new Date(parts[0],parts[1]-1,parts[2],12);
+      const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+      const count=countForDate(selected);
+      const detail=$('affiliate-calendar-detail');
+      detail.innerHTML='<div class="flex items-center justify-between gap-2"><div><p class="text-sm font-bold text-white">'+dayNames[date.getDay()]+', '+affiliateGridDateLabel(date)+'</p><p class="mt-1 text-xs text-emerald-300">'+count+' video sudah di-upload</p></div><span class="rounded-lg bg-slate-800 px-2 py-1 text-xs text-slate-300">'+(count?'Ada aktivitas':'Belum ada upload')+'</span></div>';
+      const items=uploadedKeys.filter(k=>k.startsWith(selected+'_')).sort();
+      if(items.length){
+        const list=document.createElement('div');list.className='mt-3 flex flex-wrap gap-2';
+        items.forEach(itemKey=>{
+          const time=itemKey.slice(selected.length+1);
+          const index=affiliateGridTimes.indexOf(time);
+          const seq=affiliateSequenceForDay(Math.max(0,Math.floor((date.getTime()-affiliateGridStartDate().getTime())/86400000)));
+          const code=index>=0?seq[index]||'—':'—';
+          const chip=document.createElement('span');chip.className='rounded-md border border-blue-500/40 bg-blue-600/20 px-2 py-1 text-xs font-semibold text-blue-200';chip.textContent='✓ '+time+' · '+code;
+          list.appendChild(chip);
         });
-        td.appendChild(button);tr.appendChild(td);
-      });
-      body.appendChild(tr);
+        detail.appendChild(list);
+      }
+    };
+    if(!summary.dataset.bound){
+      summary.addEventListener('click',()=>{calendar.style.display=calendar.style.display==='none'?'block':'none';});
+      $('affiliate-calendar-prev').addEventListener('click',()=>{const m=window.__affiliateCalendarMonth;m.month--;if(m.month<0){m.month=11;m.year--;}renderCalendar();});
+      $('affiliate-calendar-next').addEventListener('click',()=>{const m=window.__affiliateCalendarMonth;m.month++;if(m.month>11){m.month=0;m.year++;}renderCalendar();});
+      summary.dataset.bound='1';
     }
-    // Separate sticky header from the vertically scrolling rows, then mirror horizontal scroll.
-    const headerScroller=$('affiliate-grid-sticky-head'), bodyScroller=$('affiliate-grid-scroll');
-    if(headerScroller && bodyScroller && !headerScroller.dataset.syncReady){
-      let syncing=false;
-      headerScroller.addEventListener('scroll',()=>{
-        if(syncing) return; syncing=true; bodyScroller.scrollLeft=headerScroller.scrollLeft; syncing=false;
-      },{passive:true});
-      bodyScroller.addEventListener('scroll',()=>{
-        if(syncing) return; syncing=true; headerScroller.scrollLeft=bodyScroller.scrollLeft; syncing=false;
-      },{passive:true});
-      headerScroller.dataset.syncReady='1';
-    }
+    renderCalendar();
   }
   window.renderAffiliateSchedule=renderAffiliateSchedule;
 
