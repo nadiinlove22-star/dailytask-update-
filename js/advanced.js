@@ -1147,18 +1147,65 @@
       calendar.innerHTML='<div class="mb-3 flex items-center justify-between gap-2"><button id="affiliate-calendar-prev" type="button" class="rounded-lg bg-slate-800 px-3 py-2 text-white" aria-label="Bulan sebelumnya">‹</button><div id="affiliate-calendar-month" class="text-sm font-bold text-white"></div><button id="affiliate-calendar-next" type="button" class="rounded-lg bg-slate-800 px-3 py-2 text-white" aria-label="Bulan berikutnya">›</button></div><div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400"><span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span></div><div id="affiliate-calendar-days" class="mt-2 grid grid-cols-7 gap-1"></div><div id="affiliate-calendar-detail" class="mt-3 rounded-lg border border-slate-700 bg-slate-950/60 p-3"><p class="text-xs text-slate-400">Pilih tanggal untuk melihat jumlah video yang sudah di-upload.</p></div>';
       summary.after(calendar);
     }
-    // Keep the legacy table in the DOM for compatibility, but hide it from the new compact view.
+    // Keep the complete 30-day upload timetable visible below the summary/calendar.
     const stickyHead=head.closest('div');
     const legend=stickyHead&&stickyHead.previousElementSibling;
-    const legacy=[stickyHead,legend,$('affiliate-grid-scroll'),$('affiliate-product-detail'),section.querySelector('p.mt-2')];
-    legacy.forEach(el=>{if(el)el.style.display='none';});
+    const scroll=$('affiliate-grid-scroll');
+    const detail=$('affiliate-product-detail');
+    [stickyHead,legend,scroll,detail].forEach(el=>{if(el)el.style.display='';});
     const done=affiliateGridDoneData();
     const uploadedKeys=Object.keys(done).filter(k=>done[k]===true);
-    summary.innerHTML='<span class="min-w-0"><span class="block text-xs text-emerald-200">Total video sudah di-upload</span><span class="mt-1 block text-3xl font-extrabold text-white tabular-nums">'+uploadedKeys.length+'</span><span class="mt-1 block text-[11px] text-slate-400">Akumulasi semua tanggal · ketuk untuk buka kalender</span></span><span class="ml-3 shrink-0 rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Lihat kalender　⌄</span>';
+    const validUploadKeys=uploadedKeys.map(k=>k.match(/^(\\d{4}-\\d{2}-\\d{2})_(\\d{2}:\\d{2})$/)).filter(Boolean);
+    summary.innerHTML='<span class="min-w-0"><span class="block text-xs text-emerald-200">Total video sudah di-upload</span><span class="mt-1 block text-3xl font-extrabold text-white tabular-nums">'+uploadedKeys.length+'</span><span class="mt-1 block text-[11px] text-slate-400">Akumulasi semua tanggal · ketuk untuk buka riwayat kalender</span></span><span class="ml-3 shrink-0 rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Lihat kalender　⌄</span>';
     const now=new Date(); now.setHours(12,0,0,0);
-    if(!window.__affiliateCalendarMonth) window.__affiliateCalendarMonth={year:now.getFullYear(),month:now.getMonth()};
-    if(!window.__affiliateCalendarSelected) window.__affiliateCalendarSelected=affiliateGridDateKey(now);
+    const latestKey=validUploadKeys.map(m=>m[1]).sort().slice(-1)[0];
+    const latestDate=latestKey?new Date(Number(latestKey.slice(0,4)),Number(latestKey.slice(5,7))-1,Number(latestKey.slice(8,10)),12):now;
+    if(!window.__affiliateCalendarMonth) window.__affiliateCalendarMonth={year:latestDate.getFullYear(),month:latestDate.getMonth()};
+    if(!window.__affiliateCalendarSelected) window.__affiliateCalendarSelected=latestKey||affiliateGridDateKey(now);
     const countForDate=key=>uploadedKeys.filter(k=>k.startsWith(key+'_')).length;
+
+    // Rebuild the original 30-day product/hour planner, preserving every saved completion.
+    const headRow=document.createElement('tr');
+    const dateHead=document.createElement('th'); dateHead.textContent='Tanggal';
+    dateHead.className='sticky left-0 z-30 min-w-[108px] border border-slate-700 px-3 py-3 text-left text-white';
+    dateHead.style.background='#244d35'; headRow.appendChild(dateHead);
+    affiliateGridTimes.forEach(time=>{
+      const th=document.createElement('th'); th.textContent=time;
+      th.className='min-w-[78px] border border-slate-700 px-2 py-3 text-white';
+      th.style.background='#244d35'; headRow.appendChild(th);
+    });
+    head.innerHTML=''; head.appendChild(headRow);
+    body.innerHTML='';
+    for(let dayIndex=0;dayIndex<30;dayIndex++){
+      const date=new Date(now); date.setDate(now.getDate()+dayIndex);
+      const dateKey=affiliateGridDateKey(date);
+      const sequence=affiliateSequenceForDay(dayIndex);
+      const tr=document.createElement('tr');
+      const dateCell=document.createElement('th');
+      dateCell.className='sticky left-0 z-10 min-w-[108px] border border-slate-800 px-3 py-3 text-left text-[10px] text-slate-200';
+      dateCell.style.background=dayIndex===0?'#14532d':'#1f2937';
+      dateCell.innerHTML='<span class="block font-bold">'+date.toLocaleDateString('id-ID',{weekday:'long'})+(dayIndex===0?' · HARI INI':'')+'</span><span class="mt-1 block">'+affiliateGridDateLabel(date)+'</span>';
+      tr.appendChild(dateCell);
+      affiliateGridTimes.forEach((time,slot)=>{
+        const code=sequence[slot]||'—', isDone=done[dateKey+'_'+time]===true;
+        const td=document.createElement('td'); td.className='border border-slate-800 p-0';
+        const cell=document.createElement('button'); cell.type='button';
+        cell.className='flex min-h-[72px] w-full min-w-[78px] items-center justify-center text-xs font-bold';
+        cell.textContent=isDone?'✓ '+code:code;
+        cell.style.background=isDone?'#1d4ed8':(window.__affiliateGridSelected&&window.__affiliateGridSelected.dateKey===dateKey&&window.__affiliateGridSelected.productCode===code?'#14532d':'#10251d');
+        cell.style.color=isDone?'#fff':'#b7d7c5';
+        cell.setAttribute('aria-pressed',isDone?'true':'false');
+        cell.title=dateKey+' · '+time+' · Produk '+code+(isDone?' · sudah upload':' · tandai sudah upload');
+        cell.addEventListener('click',async()=>{
+          window.__affiliateGridSelected={dateKey,productCode:code};
+          await toggleAffiliateSlotDone(dateKey,time);
+          showAffiliateProductTimes(dateKey,code);
+        });
+        td.appendChild(cell); tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    }
+    if(scroll) scroll.style.display='block';
     const renderCalendar=()=>{
       const selected=window.__affiliateCalendarSelected;
       const state=window.__affiliateCalendarMonth;
