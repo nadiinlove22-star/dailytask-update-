@@ -1131,6 +1131,7 @@
     configureAffiliateSchedule();
     ensureAffiliateScheduleSettingsUI();
     const section=$('affiliate-grid-range').closest('section');
+    $('affiliate-grid-range').textContent='Kalender bulanan';
     // Replace the dense timetable with a compact lifetime counter and a navigable monthly calendar.
     let summary=$('affiliate-upload-summary'), calendar=$('affiliate-upload-calendar');
     if(!summary){
@@ -1147,7 +1148,9 @@
       summary.after(calendar);
     }
     // Keep the legacy table in the DOM for compatibility, but hide it from the new compact view.
-    const legacy=[head.closest('div'),$('affiliate-grid-scroll'),$('affiliate-product-detail'),section.querySelector('p.mt-2')];
+    const stickyHead=head.closest('div');
+    const legend=stickyHead&&stickyHead.previousElementSibling;
+    const legacy=[stickyHead,legend,$('affiliate-grid-scroll'),$('affiliate-product-detail'),section.querySelector('p.mt-2')];
     legacy.forEach(el=>{if(el)el.style.display='none';});
     const done=affiliateGridDoneData();
     const uploadedKeys=Object.keys(done).filter(k=>done[k]===true);
