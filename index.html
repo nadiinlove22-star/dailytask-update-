@@ -353,6 +353,10 @@
                 <input type="text" id="new-task-title" placeholder="Contoh: Baca buku..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
             <div class="flex flex-col gap-1">
+                <label class="text-[11px] text-slate-400">Catatan tugas</label>
+                <textarea id="edit-task-note" rows="3" placeholder="Tulis detail, langkah, atau pengingat untuk tugas ini..." class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 resize-y"></textarea>
+            </div>
+            <div class="flex flex-col gap-1">
                 <label class="text-[11px] text-slate-400">Target Harian</label>
                 <input type="number" id="new-task-target" min="1" value="1" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
             </div>
@@ -370,6 +374,24 @@
             <div class="flex gap-2 mt-1">
                 <button type="button" onclick="closeAddModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-xs transition">Batal</button>
                 <button type="button" onclick="saveNewTask()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detail Tugas -->
+    <div id="task-detail-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 shadow-xl">
+            <div class="flex items-start justify-between gap-3">
+                <h3 id="task-detail-title" class="text-sm font-bold text-white break-words"></h3>
+                <button type="button" onclick="closeTaskDetail()" class="text-slate-400 hover:text-white px-2" aria-label="Tutup">✕</button>
+            </div>
+            <div class="rounded-xl bg-slate-800/70 border border-slate-700 p-3">
+                <div class="text-[11px] text-emerald-400 font-semibold mb-2">Catatan tugas</div>
+                <p id="task-detail-note" class="text-xs text-slate-300 whitespace-pre-wrap break-words"></p>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeTaskDetail()" class="flex-1 bg-slate-800 text-slate-300 font-semibold py-2 rounded-xl text-xs">Tutup</button>
+                <button type="button" id="task-detail-edit" class="flex-1 bg-emerald-600 text-slate-950 font-bold py-2 rounded-xl text-xs">Edit tugas / catatan</button>
             </div>
         </div>
     </div>
