@@ -751,6 +751,8 @@ function openEditModal(id) {
     const titleEl = document.getElementById('edit-task-title');
     const targetEl = document.getElementById('edit-task-target');
     const freqEl = document.getElementById('edit-task-freq');
+    const noteEl = document.getElementById('edit-task-note');
+    if (noteEl) noteEl.value = task.note || '';
 
     if (idEl) {
         idEl.value = task.id;
@@ -835,6 +837,8 @@ function saveEditTask() {
     const freq = freqEl
         ? freqEl.value
         : 'daily';
+    const noteEl = document.getElementById('edit-task-note');
+    const note = noteEl ? noteEl.value.trim() : '';
 
     let freqVal = null;
 
@@ -878,6 +882,7 @@ function saveEditTask() {
         tasks[index] = {
             ...tasks[index],
             title,
+            note,
             target,
             freq,
             freqVal
