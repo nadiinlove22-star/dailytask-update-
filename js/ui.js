@@ -200,6 +200,32 @@ function changeDay(dayKey) {
 }
 
 
+function escapeTaskText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+}
+
+function openTaskDetail(taskId) {
+    const task = tasks.find(t => String(t.id) === String(taskId));
+    if (!task) return;
+    const modal = document.getElementById('task-detail-modal');
+    const title = document.getElementById('task-detail-title');
+    const note = document.getElementById('task-detail-note');
+    if (!modal || !title || !note) return;
+    title.textContent = task.title || 'Detail tugas';
+    note.textContent = task.note && task.note.trim() ? task.note : 'Belum ada catatan untuk tugas ini.';
+    const edit = document.getElementById('task-detail-edit');
+    if (edit) edit.onclick = () => { closeTaskDetail(); openEditModal(task.id); };
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeTaskDetail() {
+    const modal = document.getElementById('task-detail-modal');
+    if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+}
+
 function renderTodoList() {
     const container = document.getElementById('todo-list');
 
@@ -292,11 +318,11 @@ function renderTodoList() {
                 </button>
 
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-medium text-slate-200 truncate ${
+                    <button type="button" onclick="openTaskDetail(${task.id})" class="w-full text-left text-xs font-medium text-slate-200 truncate hover:text-emerald-300 ${
                         isCompleted ? 'line-through text-slate-500' : ''
-                    }">
-                        ${task.title}
-                    </p>
+                    }" aria-label="Lihat detail tugas">
+                        ${escapeTaskText(task.title)}
+                    </button>
                 </div>
 
             </div>
