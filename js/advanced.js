@@ -1211,7 +1211,7 @@
       // Do not rely on the upload snapshot captured during the initial page render.
       // Month navigation must reflect the complete, latest history for every date.
       const calendarDone=affiliateGridDoneData();
-      const calendarUploadedKeys=Object.keys(calendarDone).filter(k=>calendarDone[k]===true&&/^\\d{4}-\\d{2}-\\d{2}_\\d{2}:\\d{2}$/.test(k));
+      const calendarUploadedKeys=Object.keys(calendarDone).filter(k=>calendarDone[k]===true&&/^\d{4}-\d{2}-\d{2}_\d{2}:\d{2}$/.test(k));
       const calendarCountForDate=key=>calendarUploadedKeys.filter(k=>k.startsWith(key+'_')).length;
       const selected=window.__affiliateCalendarSelected;
       const state=window.__affiliateCalendarMonth;
