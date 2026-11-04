@@ -1137,7 +1137,7 @@
     if(!summary){
       summary=document.createElement('button');
       summary.id='affiliate-upload-summary'; summary.type='button';
-      summary.className='mb-3 flex w-full items-center justify-between rounded-xl border border-emerald-500/25 bg-emerald-950/40 p-4 text-left';
+      summary.className='mb-2 flex w-full items-center justify-between rounded-xl border border-emerald-500/25 bg-emerald-950/40 p-3 text-left';
       section.insertBefore(summary,section.firstChild);
     }
     if(!calendar){
@@ -1167,11 +1167,11 @@
     // Rebuild the original 30-day product/hour planner, preserving every saved completion.
     const headRow=document.createElement('tr');
     const dateHead=document.createElement('th'); dateHead.textContent='Tanggal';
-    dateHead.className='sticky left-0 z-30 min-w-[108px] border border-slate-700 px-3 py-3 text-left text-white';
+    dateHead.className='sticky left-0 z-30 min-w-[88px] border border-slate-700 px-2 py-1.5 text-left text-xs text-white';
     dateHead.style.background='#244d35'; headRow.appendChild(dateHead);
     affiliateGridTimes.forEach(time=>{
       const th=document.createElement('th'); th.textContent=time;
-      th.className='min-w-[78px] border border-slate-700 px-2 py-3 text-white';
+      th.className='min-w-[68px] border border-slate-700 px-1 py-1.5 text-xs text-white';
       th.style.background='#244d35'; headRow.appendChild(th);
     });
     head.innerHTML=''; head.appendChild(headRow);
@@ -1182,15 +1182,15 @@
       const sequence=affiliateSequenceForDay(dayIndex);
       const tr=document.createElement('tr');
       const dateCell=document.createElement('th');
-      dateCell.className='sticky left-0 z-10 min-w-[108px] border border-slate-800 px-3 py-3 text-left text-[10px] text-slate-200';
+      dateCell.className='sticky left-0 z-10 min-w-[88px] border border-slate-800 px-2 py-1 text-left text-[9px] leading-tight text-slate-200';
       dateCell.style.background=dayIndex===0?'#14532d':'#1f2937';
-      dateCell.innerHTML='<span class="block font-bold">'+date.toLocaleDateString('id-ID',{weekday:'long'})+(dayIndex===0?' · HARI INI':'')+'</span><span class="mt-1 block">'+affiliateGridDateLabel(date)+'</span>';
+      dateCell.innerHTML='<span class="block font-bold">'+date.toLocaleDateString('id-ID',{weekday:'short'})+(dayIndex===0?' · HARI INI':'')+'</span><span class="mt-0.5 block">'+affiliateGridDateLabel(date)+'</span>';
       tr.appendChild(dateCell);
       affiliateGridTimes.forEach((time,slot)=>{
         const code=sequence[slot]||'—', isDone=done[dateKey+'_'+time]===true;
         const td=document.createElement('td'); td.className='border border-slate-800 p-0';
         const cell=document.createElement('button'); cell.type='button';
-        cell.className='flex min-h-[72px] w-full min-w-[78px] items-center justify-center text-xs font-bold';
+        cell.className='flex h-[38px] min-h-[38px] w-full min-w-[68px] items-center justify-center text-[11px] font-bold';
         cell.textContent=isDone?'✓ '+code:code;
         cell.style.background=isDone?'#1d4ed8':(window.__affiliateGridSelected&&window.__affiliateGridSelected.dateKey===dateKey&&window.__affiliateGridSelected.productCode===code?'#14532d':'#10251d');
         cell.style.color=isDone?'#fff':'#b7d7c5';
