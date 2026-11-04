@@ -1021,10 +1021,10 @@
     // Close only after the chosen settings have been saved and the schedule refreshed.
     const panel=$('affiliate-schedule-settings');
     if(panel) panel.style.display='none';
-    const saved=affiliateScheduleSettings();
-    if($('affiliate-settings-order')) $('affiliate-settings-order').value=saved.orderMode;
-    if($('affiliate-settings-products')) $('affiliate-settings-products').value=String(saved.productsPerDay);
-    if($('affiliate-settings-videos')) $('affiliate-settings-videos').value=String(Math.max(1,Math.min(5,saved.videosPerDay)));
+    const currentSettings=affiliateScheduleSettings();
+    if($('affiliate-settings-order')) $('affiliate-settings-order').value=currentSettings.orderMode;
+    if($('affiliate-settings-products')) $('affiliate-settings-products').value=String(currentSettings.productsPerDay);
+    if($('affiliate-settings-videos')) $('affiliate-settings-videos').value=String(Math.max(1,Math.min(5,currentSettings.videosPerDay)));
   }
   function ensureAffiliateScheduleSettingsUI() {
     const range=$('affiliate-grid-range');
