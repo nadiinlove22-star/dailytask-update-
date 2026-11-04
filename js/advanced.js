@@ -1162,7 +1162,8 @@
     const latestDate=latestKey?new Date(Number(latestKey.slice(0,4)),Number(latestKey.slice(5,7))-1,Number(latestKey.slice(8,10)),12):now;
     if(!window.__affiliateCalendarMonth) window.__affiliateCalendarMonth={year:latestDate.getFullYear(),month:latestDate.getMonth()};
     if(!window.__affiliateCalendarSelected) window.__affiliateCalendarSelected=latestKey||affiliateGridDateKey(now);
-    const countForDate=key=>uploadedKeys.filter(k=>k.startsWith(key+'_')).length;
+    // Always read upload history from the latest progressData when the calendar is redrawn.
+    const countForDate=key=>Object.keys(affiliateGridDoneData()).filter(k=>k.startsWith(key+'_')&&affiliateGridDoneData()[k]===true).length;
 
     // Rebuild the original 30-day product/hour planner, preserving every saved completion.
     const headRow=document.createElement('tr');
@@ -1207,6 +1208,11 @@
     }
     if(scroll) scroll.style.display='block';
     const renderCalendar=()=>{
+      // Do not rely on the upload snapshot captured during the initial page render.
+      // Month navigation must reflect the complete, latest history for every date.
+      const calendarDone=affiliateGridDoneData();
+      const calendarUploadedKeys=Object.keys(calendarDone).filter(k=>calendarDone[k]===true&&/^\\d{4}-\\d{2}-\\d{2}_\\d{2}:\\d{2}$/.test(k));
+      const calendarCountForDate=key=>calendarUploadedKeys.filter(k=>k.startsWith(key+'_')).length;
       const selected=window.__affiliateCalendarSelected;
       const state=window.__affiliateCalendarMonth;
       $('affiliate-calendar-month').textContent=new Date(state.year,state.month,1).toLocaleDateString('id-ID',{month:'long',year:'numeric'});
@@ -1215,7 +1221,7 @@
       const days=new Date(state.year,state.month+1,0).getDate();
       for(let n=0;n<offset;n++){const blank=document.createElement('span');host.appendChild(blank);}
       for(let day=1;day<=days;day++){
-        const d=new Date(state.year,state.month,day,12), key=affiliateGridDateKey(d), count=countForDate(key);
+        const d=new Date(state.year,state.month,day,12), key=affiliateGridDateKey(d), count=calendarCountForDate(key);
         const b=document.createElement('button');b.type='button';
         b.className='relative flex min-h-[48px] flex-col items-center justify-center rounded-lg border text-xs';
         b.style.borderColor=key===selected?'#34d399':'#334155';
@@ -1227,10 +1233,10 @@
       }
       const parts=selected.split('-').map(Number), date=new Date(parts[0],parts[1]-1,parts[2],12);
       const dayNames=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-      const count=countForDate(selected);
+      const count=calendarCountForDate(selected);
       const detail=$('affiliate-calendar-detail');
       detail.innerHTML='<div class="flex items-center justify-between gap-2"><div><p class="text-sm font-bold text-white">'+dayNames[date.getDay()]+', '+affiliateGridDateLabel(date)+'</p><p class="mt-1 text-xs text-emerald-300">'+count+' video sudah di-upload</p></div><span class="rounded-lg bg-slate-800 px-2 py-1 text-xs text-slate-300">'+(count?'Ada aktivitas':'Belum ada upload')+'</span></div>';
-      const items=uploadedKeys.filter(k=>k.startsWith(selected+'_')).sort();
+      const items=calendarUploadedKeys.filter(k=>k.startsWith(selected+'_')).sort();
       if(items.length){
         const list=document.createElement('div');list.className='mt-3 flex flex-wrap gap-2';
         items.forEach(itemKey=>{
@@ -1246,8 +1252,9 @@
     };
     if(!summary.dataset.bound){
       summary.addEventListener('click',()=>{calendar.style.display=calendar.style.display==='none'?'block':'none';});
-      $('affiliate-calendar-prev').addEventListener('click',()=>{const m=window.__affiliateCalendarMonth;m.month--;if(m.month<0){m.month=11;m.year--;}renderCalendar();});
-      $('affiliate-calendar-next').addEventListener('click',()=>{const m=window.__affiliateCalendarMonth;m.month++;if(m.month>11){m.month=0;m.year++;}renderCalendar();});
+      const changeCalendarMonth=(delta)=>{const m=window.__affiliateCalendarMonth;m.month+=delta;if(m.month<0){m.month=11;m.year--;}else if(m.month>11){m.month=0;m.year++;}const prefix=String(m.year)+'-'+String(m.month+1).padStart(2,'0')+'-';const latestMonthKey=Object.keys(affiliateGridDoneData()).filter(k=>affiliateGridDoneData()[k]===true&&k.startsWith(prefix)).map(k=>k.slice(0,10)).sort()[0];window.__affiliateCalendarSelected=latestMonthKey||prefix+'01';renderCalendar();};
+      $('affiliate-calendar-prev').addEventListener('click',()=>changeCalendarMonth(-1));
+      $('affiliate-calendar-next').addEventListener('click',()=>changeCalendarMonth(1));
       summary.dataset.bound='1';
     }
     renderCalendar();
