@@ -1111,9 +1111,10 @@
       renderAffiliateSchedule();
       const detail=$('affiliate-product-detail-title');
       if(detail) detail.textContent='Perubahan belum tersimpan ke cloud. Periksa koneksi/login lalu coba lagi.';
-      return;
+      return false;
     }
     renderAffiliateSchedule();
+    return true;
   }
 
   function showAffiliateProductTimes(dateKey, productCode) {
@@ -1149,8 +1150,8 @@
       chip.title=item.done?'Tandai belum selesai':'Tandai jam ini selesai';
       chip.setAttribute('aria-pressed',item.done?'true':'false');
       chip.addEventListener('click',async()=>{
-        await toggleAffiliateSlotDone(dateKey,item.time,productCode);
-        showAffiliateProductTimes(dateKey,productCode);
+        const saved=await toggleAffiliateSlotDone(dateKey,item.time,productCode);
+        if(saved) showAffiliateProductTimes(dateKey,productCode);
       });
       timesHost.appendChild(chip);
     });
@@ -1232,8 +1233,8 @@
         cell.title=dateKey+' · '+time+' · Produk '+code+(isDone?' · sudah upload':' · tandai sudah upload');
         cell.addEventListener('click',async()=>{
           window.__affiliateGridSelected={dateKey,productCode:code};
-          await toggleAffiliateSlotDone(dateKey,time,code);
-          showAffiliateProductTimes(dateKey,code);
+          const saved=await toggleAffiliateSlotDone(dateKey,time,code);
+          if(saved) showAffiliateProductTimes(dateKey,code);
         });
         td.appendChild(cell); tr.appendChild(td);
       });
