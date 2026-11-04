@@ -1278,8 +1278,8 @@
       const items=calendarUploadedKeys.filter(k=>k.startsWith(selected+'_')).sort();
       if(items.length){
         const list=document.createElement('div');list.className='mt-3 flex flex-wrap gap-2';
-        items.forEach(itemKey=>{
-          const time=itemKey.slice(selected.length+1);
+        items.forEach(slotKey=>{
+          const time=slotKey.slice(selected.length+1);
           const index=affiliateGridTimes.indexOf(time);
           const seq=affiliateSequenceForDay(Math.max(0,Math.floor((date.getTime()-affiliateGridStartDate().getTime())/86400000)));
           const itemKey=selected+'_'+time, savedCode=affiliateGridSlotProducts()[itemKey];
