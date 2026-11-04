@@ -920,11 +920,11 @@
   let affiliateGridTimes = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'];
   let affiliateGridBase = ['A','B','C','D','E','A','B','C','D'];
   function affiliateScheduleSettings() {
-    if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return {productsPerDay:3,videosPerDay:9};
+    if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return {productsPerDay:3,videosPerDay:3};
     const raw=progressData.__affiliateScheduleSettings||{};
     return {
       productsPerDay:Math.max(1,Math.min(5,Number(raw.productsPerDay)||3)),
-      videosPerDay:Math.max(1,Math.min(15,Number(raw.videosPerDay)||9)),
+      videosPerDay:Math.max(1,Math.min(15,Number(raw.videosPerDay)||3)),
       orderMode:raw.orderMode==='grouped'?'grouped':'alternating'
     };
   }
@@ -1055,7 +1055,7 @@
       const videos=Number(videoSelect.value)||1, total=products*videos;
       $('affiliate-settings-summary').textContent='Total '+total+' video per hari ('+products+' produk × '+videos+' video per produk). Maksimal 15 video sehari. Urutan: '+(order==='alternating'?'selang-seling':'berkelompok')+'.'+(total===15?' Jarak 1 jam.':total>=8?' Jarak sekitar 2 jam.':' Jarak lebih renggang sesuai jumlah video.');
     };
-    launcher.addEventListener('click',()=>{panel.style.display=panel.style.display==='none'?'block':'none';updateSummary();});
+    launcher.addEventListener('click',()=>{const opening=panel.style.display==='none';if(opening){configureAffiliateSchedule();renderAffiliateSchedule();const current=affiliateScheduleSettings();$('affiliate-settings-order').value=current.orderMode==='alternating'?'alternating':'grouped';$('affiliate-settings-products').value=String(current.productsPerDay);$('affiliate-settings-videos').value=String(Math.max(1,Math.min(5,current.videosPerDay)));}panel.style.display=opening?'block':'none';if(opening)updateSummary();});
     $('affiliate-settings-close').addEventListener('click',()=>{panel.style.display='none';});
     $('affiliate-settings-products').addEventListener('change',updateSummary);
     $('affiliate-settings-order').addEventListener('change',updateSummary);
@@ -1167,11 +1167,11 @@
     // Rebuild the original 30-day product/hour planner, preserving every saved completion.
     const headRow=document.createElement('tr');
     const dateHead=document.createElement('th'); dateHead.textContent='Tanggal';
-    dateHead.className='sticky left-0 z-30 min-w-[88px] border border-slate-700 px-2 py-1.5 text-left text-xs text-white';
+    dateHead.className='sticky left-0 z-30 min-w-[76px] border border-slate-700 px-1.5 py-1 text-left text-[10px] text-white';
     dateHead.style.background='#244d35'; headRow.appendChild(dateHead);
     affiliateGridTimes.forEach(time=>{
       const th=document.createElement('th'); th.textContent=time;
-      th.className='min-w-[68px] border border-slate-700 px-1 py-1.5 text-xs text-white';
+      th.className='min-w-[50px] border border-slate-700 px-0.5 py-1 text-[10px] text-white';
       th.style.background='#244d35'; headRow.appendChild(th);
     });
     head.innerHTML=''; head.appendChild(headRow);
@@ -1182,7 +1182,7 @@
       const sequence=affiliateSequenceForDay(dayIndex);
       const tr=document.createElement('tr');
       const dateCell=document.createElement('th');
-      dateCell.className='sticky left-0 z-10 min-w-[88px] border border-slate-800 px-2 py-1 text-left text-[9px] leading-tight text-slate-200';
+      dateCell.className='sticky left-0 z-10 min-w-[76px] border border-slate-800 px-1.5 py-1 text-left text-[9px] leading-tight text-slate-200';
       dateCell.style.background=dayIndex===0?'#14532d':'#1f2937';
       dateCell.innerHTML='<span class="block font-bold">'+date.toLocaleDateString('id-ID',{weekday:'short'})+(dayIndex===0?' · HARI INI':'')+'</span><span class="mt-0.5 block">'+affiliateGridDateLabel(date)+'</span>';
       tr.appendChild(dateCell);
@@ -1190,7 +1190,7 @@
         const code=sequence[slot]||'—', isDone=done[dateKey+'_'+time]===true;
         const td=document.createElement('td'); td.className='border border-slate-800 p-0';
         const cell=document.createElement('button'); cell.type='button';
-        cell.className='flex h-[38px] min-h-[38px] w-full min-w-[68px] items-center justify-center text-[11px] font-bold';
+        cell.className='flex h-[38px] min-h-[38px] w-full min-w-[50px] items-center justify-center text-[10px] font-bold';
         cell.textContent=isDone?'✓ '+code:code;
         cell.style.background=isDone?'#1d4ed8':(window.__affiliateGridSelected&&window.__affiliateGridSelected.dateKey===dateKey&&window.__affiliateGridSelected.productCode===code?'#14532d':'#10251d');
         cell.style.color=isDone?'#fff':'#b7d7c5';
