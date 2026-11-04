@@ -1001,9 +1001,22 @@
     const videosPerDay=Math.max(1,Math.min(maxVideosPerProduct,Number(videosInput.value)||1));
     if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return;
     const modeInput=$('affiliate-settings-order');
+    const previousSettings=progressData.__affiliateScheduleSettings?{...progressData.__affiliateScheduleSettings}:null;
     progressData.__affiliateScheduleSettings={productsPerDay,videosPerDay,orderMode:modeInput&&modeInput.value==='alternating'?'alternating':'grouped'};
     configureAffiliateSchedule();
-    if(typeof saveData==='function') await saveData();
+    const saved=typeof saveData==='function'?await saveData():false;
+    if(saved!==true){
+      if(previousSettings) progressData.__affiliateScheduleSettings=previousSettings;
+      else delete progressData.__affiliateScheduleSettings;
+      configureAffiliateSchedule();
+      renderAffiliateSchedule();
+      const summary=$('affiliate-settings-summary');
+      if(summary) summary.textContent='Gagal menyimpan pengaturan ke cloud. Periksa koneksi/login, lalu coba lagi. Pengaturan lama dipertahankan.';
+      if($('affiliate-settings-order')) $('affiliate-settings-order').value=previousSettings?.orderMode==='grouped'?'grouped':'alternating';
+      if($('affiliate-settings-products')) $('affiliate-settings-products').value=String(previousSettings?.productsPerDay||3);
+      if($('affiliate-settings-videos')) $('affiliate-settings-videos').value=String(previousSettings?.videosPerDay||3);
+      return;
+    }
     renderAffiliateSchedule();
     // Close only after the chosen settings have been saved and the schedule refreshed.
     const panel=$('affiliate-schedule-settings');
@@ -1088,9 +1101,18 @@
   async function toggleAffiliateSlotDone(dateKey, time, productCode) {
     const itemKey=dateKey+'_'+time;
     const state=affiliateGridDoneData(), products=affiliateGridSlotProducts();
-    if(state[itemKey]===true) { delete state[itemKey]; delete products[itemKey]; }
+    const wasDone=state[itemKey]===true, previousProduct=products[itemKey];
+    if(wasDone) { delete state[itemKey]; delete products[itemKey]; }
     else { state[itemKey]=true; if(['A','B','C','D','E'].includes(productCode)) products[itemKey]=productCode; }
-    if(typeof saveData==='function') await saveData();
+    const saved=typeof saveData==='function'?await saveData():false;
+    if(saved!==true){
+      if(wasDone){state[itemKey]=true;if(previousProduct)products[itemKey]=previousProduct;}
+      else {delete state[itemKey];delete products[itemKey];}
+      renderAffiliateSchedule();
+      const detail=$('affiliate-product-detail-title');
+      if(detail) detail.textContent='Perubahan belum tersimpan ke cloud. Periksa koneksi/login lalu coba lagi.';
+      return;
+    }
     renderAffiliateSchedule();
   }
 
