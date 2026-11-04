@@ -1079,10 +1079,17 @@
     if(!progressData.__affiliateGridDone||typeof progressData.__affiliateGridDone!=='object') progressData.__affiliateGridDone={};
     return progressData.__affiliateGridDone;
   }
-  async function toggleAffiliateSlotDone(dateKey, time) {
+  // Snapshot product identity for completed slots so later setting changes do not rewrite history.
+  function affiliateGridSlotProducts() {
+    if(typeof progressData==='undefined'||!progressData||typeof progressData!=='object') return {};
+    if(!progressData.__affiliateGridSlotProducts||typeof progressData.__affiliateGridSlotProducts!=='object') progressData.__affiliateGridSlotProducts={};
+    return progressData.__affiliateGridSlotProducts;
+  }
+  async function toggleAffiliateSlotDone(dateKey, time, productCode) {
     const itemKey=dateKey+'_'+time;
-    const state=affiliateGridDoneData();
-    if(state[itemKey]===true) delete state[itemKey]; else state[itemKey]=true;
+    const state=affiliateGridDoneData(), products=affiliateGridSlotProducts();
+    if(state[itemKey]===true) { delete state[itemKey]; delete products[itemKey]; }
+    else { state[itemKey]=true; if(['A','B','C','D','E'].includes(productCode)) products[itemKey]=productCode; }
     if(typeof saveData==='function') await saveData();
     renderAffiliateSchedule();
   }
@@ -1099,10 +1106,12 @@
     window.__affiliateGridSelected={dateKey,productCode};
     const dayIndex=Math.max(0,Math.floor((d.getTime()-affiliateGridStartDate().getTime())/86400000));
     const daySequence=affiliateSequenceForDay(dayIndex);
-    const done=affiliateGridDoneData();
+    const done=affiliateGridDoneData(), savedProducts=affiliateGridSlotProducts();
     const matching=[];
-    daySequence.forEach((code,slot)=>{
-      if(code===productCode) matching.push({time:affiliateGridTimes[slot],done:done[dateKey+'_'+affiliateGridTimes[slot]]===true});
+    daySequence.forEach((plannedCode,slot)=>{
+      const time=affiliateGridTimes[slot], itemKey=dateKey+'_'+time;
+      const code=done[itemKey]===true?(savedProducts[itemKey]||plannedCode):plannedCode;
+      if(code===productCode) matching.push({time,done:done[itemKey]===true});
     });
     if(!matching.length){
       const empty=document.createElement('span');empty.className='text-xs text-slate-400';empty.textContent='Tidak ada slot untuk produk ini.';timesHost.appendChild(empty);return;
@@ -1118,7 +1127,7 @@
       chip.title=item.done?'Tandai belum selesai':'Tandai jam ini selesai';
       chip.setAttribute('aria-pressed',item.done?'true':'false');
       chip.addEventListener('click',async()=>{
-        await toggleAffiliateSlotDone(dateKey,item.time);
+        await toggleAffiliateSlotDone(dateKey,item.time,productCode);
         showAffiliateProductTimes(dateKey,productCode);
       });
       timesHost.appendChild(chip);
@@ -1187,8 +1196,10 @@
       dateCell.style.background=dayIndex===0?'#14532d':'#1f2937';
       dateCell.innerHTML='<span class="block font-bold">'+date.toLocaleDateString('id-ID',{weekday:'short'})+(dayIndex===0?' · HARI INI':'')+'</span><span class="mt-0.5 block">'+affiliateGridDateLabel(date)+'</span>';
       tr.appendChild(dateCell);
+      const savedProducts=affiliateGridSlotProducts();
       affiliateGridTimes.forEach((time,slot)=>{
-        const code=sequence[slot]||'—', isDone=done[dateKey+'_'+time]===true;
+        const itemKey=dateKey+'_'+time, isDone=done[itemKey]===true;
+        const code=(isDone&&savedProducts[itemKey])||sequence[slot]||'—';
         const td=document.createElement('td'); td.className='border border-slate-800 p-0';
         const cell=document.createElement('button'); cell.type='button';
         cell.className='flex h-[38px] min-h-[38px] w-full min-w-[50px] items-center justify-center text-[10px] font-bold';
@@ -1199,7 +1210,7 @@
         cell.title=dateKey+' · '+time+' · Produk '+code+(isDone?' · sudah upload':' · tandai sudah upload');
         cell.addEventListener('click',async()=>{
           window.__affiliateGridSelected={dateKey,productCode:code};
-          await toggleAffiliateSlotDone(dateKey,time);
+          await toggleAffiliateSlotDone(dateKey,time,code);
           showAffiliateProductTimes(dateKey,code);
         });
         td.appendChild(cell); tr.appendChild(td);
@@ -1243,7 +1254,8 @@
           const time=itemKey.slice(selected.length+1);
           const index=affiliateGridTimes.indexOf(time);
           const seq=affiliateSequenceForDay(Math.max(0,Math.floor((date.getTime()-affiliateGridStartDate().getTime())/86400000)));
-          const code=index>=0?seq[index]||'—':'—';
+          const itemKey=selected+'_'+time, savedCode=affiliateGridSlotProducts()[itemKey];
+          const code=savedCode||(index>=0?seq[index]||'—':'—');
           const chip=document.createElement('span');chip.className='rounded-md border border-blue-500/40 bg-blue-600/20 px-2 py-1 text-xs font-semibold text-blue-200';chip.textContent='✓ '+time+' · '+code;
           list.appendChild(chip);
         });
