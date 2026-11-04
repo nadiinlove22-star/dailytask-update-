@@ -1156,7 +1156,7 @@
     const done=affiliateGridDoneData();
     const uploadedKeys=Object.keys(done).filter(k=>done[k]===true);
     const validUploadKeys=uploadedKeys.map(k=>k.match(/^(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})$/)).filter(Boolean);
-    summary.innerHTML='<span class="min-w-0"><span class="block text-xs text-emerald-200">Total video sudah di-upload</span><span class="mt-1 block text-3xl font-extrabold text-white tabular-nums">'+uploadedKeys.length+'</span><span class="mt-1 block text-[11px] text-slate-400">Akumulasi semua tanggal · ketuk untuk buka riwayat kalender</span></span><span class="ml-3 shrink-0 rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Lihat kalender　⌄</span>';
+    summary.innerHTML='<span class="min-w-0"><span class="block text-[11px] text-emerald-200">Total video sudah di-upload</span><span class="mt-0.5 block text-2xl font-extrabold text-white tabular-nums">'+uploadedKeys.length+'</span><span class="mt-1 block text-[11px] text-slate-400">Akumulasi semua tanggal · ketuk untuk buka riwayat kalender</span></span><span class="ml-3 shrink-0 rounded-full bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Lihat kalender　⌄</span>';
     const now=new Date(); now.setHours(12,0,0,0);
     const latestKey=validUploadKeys.map(m=>m[1]).sort().slice(-1)[0];
     const latestDate=latestKey?new Date(Number(latestKey.slice(0,4)),Number(latestKey.slice(5,7))-1,Number(latestKey.slice(8,10)),12):now;
